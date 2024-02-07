@@ -1,0 +1,72 @@
+---
+title: "A simple INARMA modelling exercise"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{inarma}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+This vignette summarizes the basic functionality of the `inarma` package. For illustration we use a time series from infectious disease surveillance. We consider weekly numbers of reported measles cases in the German state of Bavaria (2014--2019). These are available from Robert Koch Institute (https://survstat.rki.de/) and have been integrated into the package.
+```{r setup, cache=TRUE}
+# load package
+library(inarma)
+
+# load data
+data("measles")
+plot(measles$year + measles$week/52, measles$value, type = "l",
+     xlab = "t", ylab = "value")
+acf(measles$value, main = "Empirical ACF", lag.max = 6)
+```
+
+We start by fitting a Poisson INAR(1) model, one of the most basic count time series models. To assess the model fit we plot an overlay of fitted and observed values as well as the residual autocorrelation function.
+```{r fit_inar, cache=TRUE}
+fit_inar_pois <- fit_inar(measles$value, family = "Poisson")
+par(mfcol = c(1, 2))
+plot(fit_inar_pois, type = "fit")
+plot(fit_inar_pois, type = "racf")
+```
+We can see that there is substantial residual autocorrelation at lags 2 and 3.
+
+To remedy this we fit a more flexible INARMA(1, 1) model. This takes a little while as likelihood evaluation is computationally expensive. We note that the packae also contains a faster moment-based estimation scheme, but in this setting it yields instable results.
+```{r fit_poisson, cache=TRUE}
+fit_inarma_pois <- fit_inarma(measles$value, family = "Poisson")
+# remove comment out to run: method of moments estimation is instable 
+# in this example.
+# fit_inarma_moments <- fit_inarma_moments(measles$value, family = "Poisson")
+```
+Again we consider the model summary and display some diagnostic plots. The residual autocorrelations have largely disappeared; however, checking the variance of the Pearson residuals we note that it considerably exceeds one. This is in line with the observation that the in-sample 80\% one-step-ahead intervals cover less than 80\% of the observations.
+```{r plots_poisson, cache=TRUE}
+# Summarize:
+summary(fit_inarma_pois)
+# Plot the model fit:
+par(mfcol = c(1, 2))
+plot(fit_inarma_pois, type = "fit")
+# Plot autocorrelation of Pearson residuals:
+plot(fit_inarma_pois, type = "racf")
+# Compute variance of Pearson residuals
+var(fit_inarma_pois$pearson_residuals)
+```
+We therefore fit an INARMA(1, 1) model with negative binomial rather than Poisson immigration.
+```{r fit_nb, cache=TRUE}
+fit_inarma_nb <- fit_inarma(measles$value, family = "NegBin")
+```
+This leads to Pearson residuals with a variance close to 1 and a firther improved model fit in terms of AIC.
+```{r plots_nb, cache=TRUE}
+# Summarize:
+summary(fit_inarma_nb)
+# Plot the model fit:
+par(mfcol = c(1, 2))
+plot(fit_inarma_nb, type = "fit")
+# Plot autocorrelation of Pearson residuals:
+plot(fit_inarma_nb, type = "racf")
+# Compute variance of Pearson residuals
+var(fit_inarma_nb$pearson_residuals)
+```

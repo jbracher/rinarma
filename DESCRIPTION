@@ -1,0 +1,14 @@
+Package: inarma
+Type: Package
+Title: Fitting INARMA models
+Version: 1.0
+Date: 2024-02-05
+Author: Johannes Bracher
+Maintainer: Johannes Bracher <johannes.bracher@kit.edu>
+Description: This package implements maximum likelihood estimation, simulation and some convenience functions for INARMA(1, 1) count time series models as described in Bracher and Soblova (2024).
+License: GPL (>= 2)
+RoxygenNote: 7.3.1
+Suggests: 
+    knitr,
+    rmarkdown
+VignetteBuilder: knitr
