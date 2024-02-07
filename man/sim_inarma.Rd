@@ -7,14 +7,18 @@
 sim_inarma(
   tau,
   psi,
-  phi,
+  phi = NULL,
+  beta = NULL,
   kappa,
   lgt,
   family = c("Poisson", "Hermite", "NegBin")
 )
 }
 \arguments{
-\item{tau, psi, phi, kappa}{the model parameters.}
+\item{tau, psi, phi, beta, kappa}{the model parameters. Note that `phi` and `beta`
+characterize the same underlying parameter, with `phi = 1 - beta`. Only one
+of them should be specified, but we keep both to ensure compatibility for
+different settings.}
 
 \item{lgt}{the length of the simulated time series.}
 

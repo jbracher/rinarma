@@ -4,7 +4,10 @@
 #' of the stationary distribution of \eqn{E[1]}.
 #'
 #' @export
-#' @param tau,psi,phi,kappa the model parameters.
+#' @param tau,psi,phi,beta,kappa the model parameters. Note that `phi` and `beta`
+#' characterize the same underlying parameter, with `phi = 1 - beta`. Only one
+#' of them should be specified, but we keep both to ensure compatibility for
+#' different settings.
 #' @param lgt the length of the simulated time series.
 #' @param family family the distributional family; one of `"Poisson"`, `"Hermite"` or `"NegBin"`.
 #' @return A named list with the following elements:
@@ -13,19 +16,36 @@
 #' \item{E}{The hidden process \eqn{E_t}}
 #' \item{I}{The innovation process \eqn{I_t}}
 #' }
-sim_inarma <- function(tau, psi, phi, kappa, lgt,
+sim_inarma <- function(tau, psi = NULL, phi = NULL, beta = NULL, kappa, lgt,
                        family = c("Poisson", "Hermite", "NegBin")){
 
-  args <- list(tau = tau,
-               phi = phi, kappa = kappa, lgt = lgt)
-  if(family %in% c("Hermite", "NegBin")) args$psi <- psi
+  if(is.null(phi) == is.null(beta)) stop("Exactly one of phi and beta needs to be specified.")
+  if(tau <= 0) stop("tau needs to be positive.")
+  if(!is.null(psi)){
+    if(psi <= 0) stop("psi needs to be positive.")
+  }
+  if(!is.null(phi)){
+    if(0 > phi | 1 < phi) stop("phi needs to be from [0, 1].")
+  }
+  if(!is.null(beta)){
+    if(0 > beta | 1 < beta) stop("beta needs to be from [0, 1].")
+  }
 
+  # internal codes use phi parameterization:
+  if(!is.null(beta)){
+    phi <- 1 - beta
+  }
+
+  # collect arguments in list:
+  args <- list(tau = tau, phi = phi, kappa = kappa, lgt = lgt)
+  # add psi only if needed
+  if(family %in% c("Hermite", "NegBin")) args$psi <- psi
+  # call relevant simulation function
   sim_fct <- switch (family,
                      "Poisson" = sim_inarma_poisson,
                      "Hermite" = sim_inarma_hermite,
                      "NegBin" = sim_inarma_negbin
   )
-
   do.call(sim_fct, args)
 }
 

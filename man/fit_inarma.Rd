@@ -63,7 +63,7 @@ where \eqn{\circ} denotes binomial thinning. The two thinnings of \eqn{E_t} are 
 \deqn{[\beta \circ E_t, (1 - \beta) \circ E_t] \sim \text{Mult}(E_t, \beta, 1 - \beta).}
 The immigration process \eqn{I_t} consists of independently and identically distributed random variables which
 can be Poisson, Hermite or negative binomial. This distribution is charaterized by its mean, denoted by
- \eqn{\tau}, and potentially a dispersion parameter \eqn{\psi}. See Bracher and Sobolova for details.
+ \eqn{\tau}, and potentially a dispersion parameter \eqn{\psi}. See Bracher and Sobolova (2024) for details.
 }
 \details{
 The function uses a variation of the forward algorithm to fit the models. This is

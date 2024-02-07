@@ -7,7 +7,8 @@
 sop_inarma(
   tau,
   psi = NULL,
-  phi,
+  phi = NULL,
+  beta = NULL,
   kappa,
   family = c("Poisson", "Hermite", "NegBin")
 )

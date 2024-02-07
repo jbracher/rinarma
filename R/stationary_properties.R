@@ -40,8 +40,25 @@ sop_inarma0 <- function(mu_I, sigma2_I, phi, kappa){
 #' \item{acf1}{the autocorrelation \eqn{\rho_X(1)} at lag 1.}
 #' \item{mu}{the decay factor of the autocorrelation function, i.e., \eqn{\rho_X(2)/\rho_X(1)}.}
 #' }
-sop_inarma <- function(tau, psi = NULL, phi, kappa,
+sop_inarma <- function(tau, psi = NULL, phi = NULL, beta = NULL, kappa,
                        family = c("Poisson", "Hermite", "NegBin")){
+  # check arguments:
+  if(is.null(phi) == is.null(beta)) stop("Exactly one of phi and beta needs to be specified.")
+  if(tau <= 0) stop("tau needs to be positive.")
+  if(!is.null(psi)){
+    if(psi <= 0) stop("psi needs to be positive.")
+  }
+  if(!is.null(phi)){
+    if(0 > phi | 1 < phi) stop("phi needs to be from [0, 1].")
+  }
+  if(!is.null(beta)){
+    if(0 > beta | 1 < beta) stop("beta needs to be from [0, 1].")
+  }
+
+  # internal codes use phi parameterization:
+  if(!is.null(beta)){
+    phi <- 1 - beta
+  }
 
   mu_I <- tau
 

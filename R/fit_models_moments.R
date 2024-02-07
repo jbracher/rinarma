@@ -146,7 +146,7 @@ fit_inarma_moments <- function(observed, family = c("Poisson", "Hermite", "NegBi
   if(parameterization == "beta"){
     names(ret$coefficients)[names(ret$coefficients) == "phi"] <- "beta"
     ret$coefficients["beta"] <- 1 - ret$coefficients["beta"]
-    names(ret$se)[names(ret$se) == "phi"] <- "beta"
+    names(ret$coefficients)[names(ret$coefficients) == "phi"] <- "beta"
   }
 
   class(ret) <- "inarma"
