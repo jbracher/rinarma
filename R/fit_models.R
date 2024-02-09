@@ -30,7 +30,7 @@
 #'
 #' @param observed a vector of observed count values
 #' @param family the distributional family; one of `"Poisson"`, `"Hermite"` or `"NegBin"`
-#' @param start initial values for the optimization routine
+#' @param start initial values for the optimization routine (on the internal scale; check the element `"optim"` of the return list)
 #' @param return_se should standard errors be returned?
 #' @param parameterization the function internally works with a slightly different notation as
 #' the paper by Bracher and Sobolova (2024). The default `parameterization = "beta"` will return results
@@ -76,57 +76,60 @@ fit_inarma <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
   }
   colnames(data_tau) <- paste0("tau.", colnames(data_tau))
 
-  # create starting value for parameter optimization with reasonable names:
+  # create starting value for parameter optimization:
   tau_is_time_varying <- ncol(data_tau) > 1 | any(data_tau[, 1] != mean(data_tau))
   if(is.null(start)){
-    # # run moment estimation to get starting values:
-    # fit_moments <- fit_inarma_moments(observed = observed, family = family)
-    # coefficients_moments <- fit_moments$coefficients
-    # # move coefficients into allowed ranges if necessary:
-    # coefficients_moments["tau"] <- max(0.1, coefficients_moments["tau"])
-    # coefficients_moments["phi"] <- min(max(0.05, coefficients_moments["phi"]), 0.95)
-    # coefficients_moments["kappa"] <- min(max(0.05, coefficients_moments["kappa"]), 0.95)
-    # if(family == "Hermite"){
-    #   coefficients_moments["psi"] <- min(max(0.1, coefficients_moments["psi"]), 0.95)
-    # }
-    # if(family == "NegBin"){
-    #   coefficients_moments["psi"] <- min(max(0.1, coefficients_moments["psi"]), 0.95)
-    # }
-    #
-    # # transform moment estimators to scale used internally
-    # coefficients_moments_trafo <- c("tau.Intercept" = NA,
-    #                                 "logit_phi" = NA,
-    #                                 "logit_kappa" = NA)
-    # if(family == "Hermite") coefficients_moments_trafo <- c(coefficients_moments_trafo, "logit_psi" = NA)
-    # if(family == "NegBin") coefficients_moments_trafo <- c(coefficients_moments_trafo, "log_psi" = NA)
-    # if(tau_is_time_varying | initialization == "Poisson") coefficients_moments_trafo <- c(coefficients_moments_trafo, "log_mean_E1" = NA)
-    #
-    # coefficients_moments_trafo["tau.Intercept"] <- log(coefficients_moments["tau"])
-    # coefficients_moments_trafo["logit_phi"] <- log(coefficients_moments["phi"]/(1 - coefficients_moments["phi"]))
-    # coefficients_moments_trafo["logit_kappa"] <- log(coefficients_moments["kappa"]/(1 - coefficients_moments["kappa"]))
-    # if(family == "Hermite"){
-    #   coefficients_moments_trafo["logit_psi"] <- log(coefficients_moments["psi"]/(1 - coefficients_moments["psi"]))
-    # }
-    # if(family == "NegBin"){
-    #   coefficients_moments_trafo["log_psi"] <- log(coefficients_moments["psi"])
-    # }
-    #
-    # if(tau_is_time_varying | initialization == "Poisson"){
-    #   coefficients_moments_trafo["log_mean_E1"] <- log(max(0, (observed[1] - tau)/phi))
-    # }
-    # start <- coefficients_moments_trafo
+    # run moment estimation:
+    suppressWarnings(
+      suppressMessages(
+        fit_moments <- fit_inarma_moments(observed = observed, family = family, parameterization = "phi")
+      )
+    )
+    coefficients_moments <- fit_moments$coefficients
+    # move coefficients into allowed ranges if necessary:
+    coefficients_moments["tau"] <- max(0.1, coefficients_moments["tau"])
+    coefficients_moments["phi"] <- min(max(0.05, coefficients_moments["phi"]), 0.95)
+    coefficients_moments["kappa"] <- min(max(0.05, coefficients_moments["kappa"]), 0.95)
+    if(family == "Hermite"){
+      coefficients_moments["psi"] <- min(max(0.1, coefficients_moments["psi"]), 0.95)
+    }
+    if(family == "NegBin"){
+      coefficients_moments["psi"] <- min(max(0.1, coefficients_moments["psi"]), 0.95)
+    }
 
-    start <- c(rep(0, ncol(data_tau)),
-               -1, # phi
-               -1, # kappa
-               if(family %in% c("Hermite", "NegBin")) -1, # psi
-               1) # mean_E1
+    # initialize vector of transformed moment estimators (scale used internally)
+    start <- c("tau.Intercept" = NA,
+               "logit_phi" = NA,
+               "logit_kappa" = NA,
+               if(family == "Hermite") "logit_psi" = NA,
+               if(family == "NegBin") "log_psi" = NA,
+               "log_mean_E1" = NA)
 
-    names(start) <- c(colnames(data_tau),
-                      "logit_phi", "logit_kappa",
-                      if(family == "NegBin") "log_psi",
-                      if(family == "Hermite") "logit_psi",
-                      "log_mean_E1")
+    # fill that vector:
+    start["tau.Intercept"] <- log(coefficients_moments["tau"])
+    start["logit_phi"] <- log(coefficients_moments["phi"]/(1 - coefficients_moments["phi"]))
+    start["logit_kappa"] <- log(coefficients_moments["kappa"]/(1 - coefficients_moments["kappa"]))
+    if(family == "Hermite"){
+      start["logit_psi"] <- log(coefficients_moments["psi"]/(1 - coefficients_moments["psi"]))
+    }
+    if(family == "NegBin"){
+      start["log_psi"] <- log(coefficients_moments["psi"])
+    }
+    start["log_mean_E1"] <- log(max(1, (observed[1] - coefficients_moments["tau"])/coefficients_moments["phi"]))
+
+
+    # old starting values
+    # start <- c(rep(0, ncol(data_tau)),
+    #            -1, # phi
+    #            -1, # kappa
+    #            if(family %in% c("Hermite", "NegBin")) -1, # psi
+    #            1) # mean_E1
+    #
+    #     names(start) <- c(colnames(data_tau),
+    #                       "logit_phi", "logit_kappa",
+    #                       if(family == "NegBin") "log_psi",
+    #                       if(family == "Hermite") "logit_psi",
+    #                       "log_mean_E1")
 
   }
 
@@ -221,8 +224,12 @@ fit_inarma <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
   ret$coefficients_raw <- opt$par
   ret$se_raw <- ret$cov_raw <- NULL
   if(return_se){
-    ret$cov_raw <- solve(opt$hessian)
-    ret$se_raw <- sqrt(diag(ret$cov_raw))
+    to_solve <- opt$hessian + 10^-6 # add small value to diagonal to avoid numerical issues
+    ret$cov_raw <- solve(to_solve)
+    if(any(diag(ret$cov_raw) < 0)){
+      warning("Negative diagonal elements in inverse Fisher matrix - thresholding at zero. At least one estimated standard error will be zero.")
+    }
+    ret$se_raw <- sqrt(pmax(diag(ret$cov_raw), 0))
   }
 
   # parameter estimates on original scale:
@@ -250,8 +257,8 @@ fit_inarma <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
   # compute standard errors on untransformed scale via delta method
   # (use as.numeric to get rid of naming of numeric vectors)
   ret$se <- list(tau = as.numeric(ret$se_raw["tau.Intercept"]*exp(ret$coefficients_raw["tau.Intercept"])^2),
-                             phi = as.numeric(ret$se_raw["logit_phi"]*exp(ret$coefficients_raw["logit_phi"])/(1 + exp(ret$coefficients_raw["logit_phi"]))^2),
-                             kappa = as.numeric(ret$se_raw["logit_kappa"]*exp(ret$coefficients_raw["logit_kappa"])/(1 + exp(ret$coefficients_raw["logit_kappa"]))^2))
+                 phi = as.numeric(ret$se_raw["logit_phi"]*exp(ret$coefficients_raw["logit_phi"])/(1 + exp(ret$coefficients_raw["logit_phi"]))^2),
+                 kappa = as.numeric(ret$se_raw["logit_kappa"]*exp(ret$coefficients_raw["logit_kappa"])/(1 + exp(ret$coefficients_raw["logit_kappa"]))^2))
   if(family == "NegBin") ret$se$psi <- as.numeric(ret$se_raw["log_psi"]*exp(ret$coefficients_raw["log_psi"])^2)
   if(family == "Hermite") ret$se$psi <- as.numeric(ret$se_raw["logit_psi"]*exp(ret$coefficients_raw["logit_psi"])/(1 + exp(ret$coefficients_raw["logit_psi"]))^2)
   ret$se$mean_E1 <- as.numeric(ret$se_raw["log_mean_E1"]*exp(ret$coefficients_raw["log_mean_E1"])^2)
@@ -494,7 +501,8 @@ fit_inar <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
   ret$coefficients_raw <- opt$par
   ret$se_raw <- ret$cov_raw <- NULL
   if(return_se){
-    ret$cov_raw <- solve(opt$hessian)
+    to_solve <- opt$hessian + 10^-6 # add small value to diagonal to avoid numerical issues
+    ret$cov_raw <- solve(to_solve)
     ret$se_raw <- sqrt(diag(ret$cov_raw))
   }
 
