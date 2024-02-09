@@ -101,8 +101,8 @@ fit_inarma <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
     start <- c("tau.Intercept" = NA,
                "logit_phi" = NA,
                "logit_kappa" = NA,
-               if(family == "Hermite") "logit_psi" = NA,
-               if(family == "NegBin") "log_psi" = NA,
+               "logit_psi" =  if(family == "Hermite") NA,
+               "log_psi" = if(family == "NegBin") NA,
                "log_mean_E1" = NA)
 
     # fill that vector:
@@ -322,11 +322,11 @@ choose_support <- function(observed, tau, phi, kappa, psi = NULL, family){
 
   mu_E <- kappa*mu_I/(1 - xi)
   upper_E <- if(family == "Poisson"){
-    qpois(0.9999, lambda = mu_E)
+    qpois(0.999, lambda = mu_E)
   }else{
     sigma2_E <- (kappa^2*sigma2_I + kappa*(1 - kappa + xi)*mu_I)/(1 - xi^2)
     size_E <- mu_E^2/(sigma2_E - mu_E)
-    qnbinom(0.9999, mu = mu_E, size = size_E)
+    qnbinom(0.999, mu = mu_E, size = size_E)
   }
 
   upper_observed <- ceiling(1.2*max(observed))
