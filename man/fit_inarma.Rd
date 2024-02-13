@@ -23,7 +23,7 @@ the paper by Bracher and Sobolova (2024). The default `parameterization = "beta"
 formated as in the paper. `parameterization = "phi"` returns results as handled internally,
 with `phi = 1 - beta`.}
 
-\item{start}{initial values for the optimization routine}
+\item{start}{initial values for the optimization routine (on the internal scale; check the element `"optim"` of the return list)}
 
 \item{return_se}{should standard errors be returned?}
 

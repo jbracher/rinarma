@@ -6,7 +6,7 @@
 \usage{
 sim_inarma(
   tau,
-  psi,
+  psi = NULL,
   phi = NULL,
   beta = NULL,
   kappa,

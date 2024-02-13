@@ -15,6 +15,11 @@
 #' already for medium-level counts. If the time series contains values above ~15
 #' moment-based estimation using `fit_inarma_moments` may be more practical.
 #'
+#' Note that to improve convergence behaviour the function uses some slight regularization
+#' which prevents \eqn{beta > 0.97} and \eqn{psi < 0.03}. If \eqn{psi} is nonetheless
+#' small, it may be more suitable to fit a Poisson model rather than a negative
+#' binomial or Hermite.
+#'
 #' @export
 #'
 #' @examples
@@ -170,25 +175,38 @@ fit_inarma <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
     }
 
     if(family == "Poisson"){
-      llik <- -llik_inarma_pois(vect = observed, distr_E1 = distr_E1, tau = tau,
+      nllik <- -llik_inarma_pois(vect = observed, distr_E1 = distr_E1, tau = tau,
                                 phi = phi, kappa = kappa, support = support,
                                 return_distr = return_distr)
-      return(llik)
+
     }
 
     if(family == "Hermite"){
-      llik <- -llik_inarma_herm(vect = observed, distr_E1 = distr_E1, tau = tau,
+      nllik <- -llik_inarma_herm(vect = observed, distr_E1 = distr_E1, tau = tau,
                                 phi = phi, kappa = kappa, psi = psi, support = support,
                                 return_distr = return_distr)
-      return(llik)
     }
 
     if(family == "NegBin"){
-      llik <- -llik_inarma_negbin(vect = observed, distr_E1 = distr_E1, tau = tau,
+      nllik <- -llik_inarma_negbin(vect = observed, distr_E1 = distr_E1, tau = tau,
                                   phi = phi, kappa = kappa, psi = psi, support = support,
                                   return_distr = return_distr)
-      return(llik)
     }
+
+    print(phi)
+    print(max(support))
+
+    # some slight regularization on beta to avoid very small values (which lead
+    # to large support and very long computations)
+    if(phi < 0.03){
+      nllik <- nllik + exp(0.03/phi) - exp(1)
+    }
+    # very low values of psi lead to convergence issues
+    if(psi < 0.03){
+      nllik <- nllik + exp(0.03/psi) - exp(1)
+    }
+
+    return(nllik)
   }
 
   opt <- optim(par = start, fn = nllik_vect, return_distr = FALSE,
@@ -253,6 +271,13 @@ fit_inarma <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
   names_coefficients <- names(ret$coefficients)
   ret$coefficients <- unlist(ret$coefficients)
   names(ret$coefficients) <- names_coefficients
+
+  # message for very small values of psi:
+  if(family %in% c("NegBin", "Hermite")){
+    if(ret$coefficients["psi"] < 0.05){
+      message("The estimated overdispersion parameter psi is below 0.05. It may be more suitable to fit a Poisson model")
+    }
+  }
 
   # compute standard errors on untransformed scale via delta method
   # (use as.numeric to get rid of naming of numeric vectors)

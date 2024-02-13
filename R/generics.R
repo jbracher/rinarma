@@ -13,6 +13,10 @@ summary.inarma <- function(model){
     cat("\n")
     cat("Number of observations used for fitting:", model$nobs, "\n")
     cat("AIC:", model$AIC, "\n")
+    convergence_code <- model$optim$convergence
+    convergence_text <- ifelse(convergence_code == 0, "successful", "failed")
+    cat("\n")
+    cat("Convergence of optimizer", convergence_text, paste0("(optim$convergence = ", convergence_code, ")."))
   }
   if(model$fitting_method == "moments"){
     cat("No standard errors or AIC are available for fits via method of moments.\n")
