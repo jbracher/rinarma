@@ -192,17 +192,14 @@ fit_inarma <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
                                   phi = phi, kappa = kappa, psi = psi, support = support,
                                   return_distr = return_distr)
     }
-
-    print(phi)
-    print(max(support))
-
-    # some slight regularization on beta to avoid very small values (which lead
+    
+    # some slight regularization on beta = 1 - phi to avoid very large values (which lead
     # to large support and very long computations)
     if(phi < 0.03){
       nllik <- nllik + exp(0.03/phi) - exp(1)
     }
     # very low values of psi lead to convergence issues
-    if(psi < 0.03){
+    if(family !== "Poisson" & psi < 0.03){
       nllik <- nllik + exp(0.03/psi) - exp(1)
     }
 
