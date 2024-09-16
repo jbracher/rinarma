@@ -1,15 +1,35 @@
+#' Calculate all necessary probabilities for tm_A_to_E in advance
+#' @param vect the vector of observed values
+#' @param kappa the parameter kappa (offspring mean)
+#' @param support_E the chosen support for E
+#' @return a matrix containing transition probabilities from all possible
+#' X[t - 1] (values of E in rows, of X in columns); to be transformed into
+#' transition matrices by function tm_A_to_E()
+tm_A_to_E_bulk <- function (vect, kappa, support_E) {
+  # Pre-calculate the vect0 values for all observed values of X
+  X_possible <- unique(vect)
+  mat0 <- t(sapply(
+    support_E,
+    function (x) {dbinom(x, size = X_possible, prob = kappa)}
+  ))
+  colnames(mat0) <- X_possible
+  return(mat0)
+}
+
 #' Get transition matrix from A[t] = (E[t] - L[t]) to E[t + 1]
 #' @param kappa the parameter kappa (offspring mean)
-#' @param X_tminus1 vector of probabilities for X[t - 1]; also implies the support
+#' @param X_tminus1 value of X[t - 1]; also implies the support
 #' @param support_A the chosen support for A
-#' @param support_A the chosen support for E
+#' @param support_E the chosen support for E
 #' @return a matrix containing transition probabilities (values of A in rows, of E in columns)
-tm_A_to_E <- function(kappa, X_tminus1, support_A, support_E){
+tm_A_to_E <- function(vect0, X_tminus1, support_A, support_E){
+  # THIS FUNCTION IS POTENTIALLY CALLED MORE OFTEN THAN NEEDED, ESPECIALLY FOR
+  # LOW VALUES OF OBSERVED DATA AND LONG DATA SERIES, AN ALTERNATIVE WOULD
+  # BE TO STORE ALL TRANSITION MARICES IN ADVANCE
+
   # the required matrix actually looks the same in all rows, just shifted
   # the vector of probabilities which needs to be re-used in each row
-  vect0 <- dbinom(support_E,
-                  size = X_tminus1,
-                  prob = kappa)
+
   # fill the matrix with shifted versions of that vector
   tm_A_to_E <- matrix(rep(c(vect0, 0),
                           length.out = length(support_A)*length(support_E)),
@@ -109,10 +129,13 @@ llik_inarma0_tv <- function(vect, distr_E1, distr_I, phi, kappa, log = TRUE, ret
                              inds_A = inds_A)
   names(p_A_X_temp) <- paste0("A=", support_A)
 
+  # Pre-calculate the probabilities
+  mat0 <- tm_A_to_E_bulk(vect, kappa, support_E)
+
   # now look over other time points:
   for(t in 2:lgt){
     # get transition matrix:
-    tm_A_to_E_temp <- tm_A_to_E(kappa = kappa,
+    tm_A_to_E_temp <- tm_A_to_E(vect0 = mat0[, as.character(vect[t - 1])],
                                 X_tminus1 = vect[t - 1],
                                 support_A = support_A,
                                 support_E = support_E)
