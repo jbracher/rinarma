@@ -1,23 +1,51 @@
 #' Calculate all necessary probabilities for tm_A_to_E in advance
 #' @param vect the vector of observed values
-#' @param kappa the parameter kappa (offspring mean)
+#' @param kappa the model parameter kappa (offspring mean)
+#' @param zeta the model parameter zeta; (0 corresponds to the binomial thinning,
+#' 1 to the Poisson thinning), values in between to the mixed thinning operator
 #' @param support_E the chosen support for E
+#' @param offspring the offspring distribution, or in other words, the type of
+#' the \eqn{\kappa \bullet X_t}
 #' @return a matrix containing transition probabilities from all possible
 #' X[t - 1] (values of E in rows, of X in columns); to be transformed into
 #' transition matrices by function tm_A_to_E()
-tm_A_to_E_bulk <- function (vect, kappa, support_E) {
+tm_A_to_E_bulk <- function (vect, kappa, zeta, support_E, offspring) {
   # Pre-calculate the vect0 values for all observed values of X
   X_possible <- unique(vect)
-  mat0 <- t(sapply(
-    support_E,
-    function (x) {dbinom(x, size = X_possible, prob = kappa)}
-  ))
+  if (offspring == "binomial") {
+    mat0 <- t(sapply(
+      support_E,
+      function (x) {dbinom(x, size = X_possible, prob = kappa)}
+    ))
+  } else if (offspring == "binomial-Poisson"){
+    # Convoluting the binomial and Poisson distribution
+    mat0B <- t(sapply(
+      support_E,
+      function (x) {dbinom(x, size = X_possible, prob = kappa * (1 - zeta))}
+    ))
+    mat0P <- t(sapply(
+      support_E,
+      function (x) {dpois(x, lambda = X_possible * kappa * zeta)}
+    ))
+    mat0 <- matrix(nrow = length(support_E), ncol = length(X_possible))
+    mat0[1, ] <- mat0B[1, ] * mat0P[1, ]  # First iteration outside sapply
+    mat0[-1, ] <- t(sapply(
+      support_E[-1],
+      function (x) {
+        apply(mat0B[1:(x + 1), ] * mat0P[(x + 1):1, ], 2, sum)
+      }
+    ))
+  }
+
+
   colnames(mat0) <- X_possible
   return(mat0)
 }
 
 #' Get transition matrix from A[t] = (E[t] - L[t]) to E[t + 1]
 #' @param kappa the parameter kappa (offspring mean)
+#' @param zeta the model parameter `zeta`; (0 corresponds to the binomial thinning,
+#' 1 to the Poisson thinning), values in between to the mixed thinning operator
 #' @param X_tminus1 value of X[t - 1]; also implies the support
 #' @param support_A the chosen support for A
 #' @param support_E the chosen support for E
@@ -45,11 +73,14 @@ tm_A_to_E <- function(vect0, X_tminus1, support_A, support_E){
 #' @param vect the vector of observed values
 #' @param distr_E1 a vector of probabilities used to initialize E1
 #' @param distr_I the immigration distribution (probabilities for 0, ..., M); also implies the support for E and X
-#' @param phi,kappa the model parameters
+#' @param phi,kappa,zeta the model parameters
+#' @param offspring the offspring distribution, or in other words, the type of
+#' the \eqn{\kappa \bullet X_t} thinning; one of `"binomial"`, or `"binomial-Poisson"`
 #' @param log should log-likelihood rather than likelihood be returned?
 #' @param return_distr should a matrix with conditional probabilities (given the past) for each time point be returned?
 #' @return the conditional (log) likelihood as a numeric or a matrix containing all relevant conditional probabilities (if return_distr == TRUE)
-llik_inarma0_tv <- function(vect, distr_E1, distr_I, phi, kappa, log = TRUE, return_distr = FALSE){
+llik_inarma0_tv <- function(vect, distr_E1, distr_I, phi, kappa, zeta,
+                            offspring, log = TRUE, return_distr = FALSE){
   lgt <- length(vect)
 
   if(ncol(distr_I) != length(distr_E1)){
@@ -130,7 +161,7 @@ llik_inarma0_tv <- function(vect, distr_E1, distr_I, phi, kappa, log = TRUE, ret
   names(p_A_X_temp) <- paste0("A=", support_A)
 
   # Pre-calculate the probabilities
-  mat0 <- tm_A_to_E_bulk(vect, kappa, support_E)
+  mat0 <- tm_A_to_E_bulk(vect, kappa, zeta, support_E, offspring)
 
   # now look over other time points:
   for(t in 2:lgt){
@@ -192,12 +223,15 @@ llik_inarma0_tv <- function(vect, distr_E1, distr_I, phi, kappa, log = TRUE, ret
 #' @param vect the vector of observed values
 #' @param distr_E1 a vector of probabilities used to initialize E1
 #' @param tau model parameter, scalar or a vector for time-varying immigration distributions
-#' @param phi,kappa the model parameters, scalar
+#' @param phi,kappa,zeta the model parameters, scalar
 #' @param support the support for E and X
+#' @param offspring the offspring distribution, or in other words, the type of
+#' the \eqn{\kappa \bullet X_t}
 #' @param log should log-likelihood rather than likelihood be returned?
 #' @param return_distr should a matrix with conditional probabilities (given the past) for each time point be returned?
 #' @return the conditional (log) likelihood as a numeric or a matrix containing all relevant conditional probabilities (if return_distr == TRUE)
-check_arguments_llik <- function(vect, distr_E1, tau, phi, psi, kappa, support, log, return_distr){
+check_arguments_llik <- function(vect, distr_E1, tau, phi, psi, kappa,
+                                 zeta, support, offspring, log, return_distr){
   if(is.null(distr_E1) & is.null(support)){
     stop("Either distr_E1 or support need to be provided.")
   }
@@ -212,6 +246,14 @@ check_arguments_llik <- function(vect, distr_E1, tau, phi, psi, kappa, support, 
   if(length(vect) != length(tau) & length(tau) > 1){
     stop("vect and tau must be of the same length if length(tau) > 1.")
   }
+  if (!(offspring %in% c("binomial", "binomial-Poisson"))) {
+    stop("The offspring distribution must be either 'binomial',
+         or 'binomial-Poisson'.")
+  }
+  if (is.na(zeta) && offspring == "binomial-Poisson") {
+    stop("Please specify the starting value for the 'zeta' prameter.")
+  }
+
 }
 
 #' Evaluating the likelihood in the Poisson case
@@ -219,13 +261,14 @@ check_arguments_llik <- function(vect, distr_E1, tau, phi, psi, kappa, support, 
 #' @param vect the vector of observed values
 #' @param distr_E1 a vector of probabilities used to initialize E1
 #' @param tau model parameter, scalar or a vector for time-varying immigration distributions
-#' @param phi,kappa the model parameters, scalar
-#' @param support the support for E and X
+#' @param phi,kappa,zeta the model parameters, scalar
+#' @param offspring the offspring distribution, or in other words, the type of
+#' the \eqn{\kappa \bullet X_t}
 #' @param log should log-likelihood rather than likelihood be returned?
 #' @param return_distr should a matrix with conditional probabilities (given the past) for each time point be returned?
 #' @return the conditional (log) likelihood as a numeric or a matrix containing all relevant conditional probabilities (if return_distr == TRUE)
-llik_inarma_pois <- function(vect, distr_E1 = NULL, tau, phi, kappa,
-                             support = NULL, return_distr = FALSE){
+llik_inarma_pois <- function(vect, distr_E1 = NULL, tau, phi, kappa, zeta,
+                             offspring, support = NULL, return_distr = FALSE){
 
   # check arguments:
   do.call(check_arguments_llik, as.list(environment()))
@@ -246,7 +289,8 @@ llik_inarma_pois <- function(vect, distr_E1 = NULL, tau, phi, kappa,
 
   # do computations:
   llik_inarma0_tv(vect = vect, distr_E1 = distr_E1, distr_I = matr_distr_I,
-                  phi = phi, kappa = kappa, return_distr = return_distr)
+                  phi = phi, kappa = kappa, zeta = zeta,
+                  offspring = offspring, return_distr = return_distr)
 }
 
 
@@ -256,13 +300,15 @@ llik_inarma_pois <- function(vect, distr_E1 = NULL, tau, phi, kappa,
 #' @param vect the vector of observed values
 #' @param distr_E1 a vector of probabilities used to initialize E1
 #' @param tau model parameter, scalar or a vector for time-varying immigration distributions
-#' @param phi,kappa,psi the model parameters, scalar
+#' @param phi,kappa,psi,zeta the model parameters, scalar
+#' @param offspring the offspring distribution, or in other words, the type of
+#' the \eqn{\kappa \bullet X_t}
 #' @param support the support for E and X
 #' @param log should log-likelihood rather than likelihood be returned?
 #' @param return_distr should a matrix with conditional probabilities (given the past) for each time point be returned?
 #' @return the conditional (log) likelihood as a numeric or a matrix containing all relevant conditional probabilities (if return_distr == TRUE)
 llik_inarma_herm <- function(vect, distr_E1 = NULL, tau, phi, psi, kappa,
-                             support = NULL, return_distr = FALSE){
+                             zeta, offspring, support = NULL, return_distr = FALSE){
 
   # check arguments:
   do.call(check_arguments_llik, as.list(environment()))
@@ -295,7 +341,8 @@ llik_inarma_herm <- function(vect, distr_E1 = NULL, tau, phi, psi, kappa,
 
   # do computations:
   llik_inarma0_tv(vect = vect, distr_E1 = distr_E1, distr_I = matr_distr_I,
-                  phi = phi, kappa = kappa, return_distr = return_distr)
+                  phi = phi, kappa = kappa, zeta = zeta,
+                  offspring = offspring, return_distr = return_distr)
 }
 
 
@@ -305,12 +352,14 @@ llik_inarma_herm <- function(vect, distr_E1 = NULL, tau, phi, psi, kappa,
 #' @param vect the vector of observed values
 #' @param distr_E1 a vector of probabilities used to initialize E1
 #' @param tau model parameter, scalar or a vector for time-varying immigration distributions
-#' @param phi,kappa,psi the model parameters, scalar
+#' @param phi,kappa,psi,zeta the model parameters, scalar
+#' @param offspring the offspring distribution, or in other words, the type of
+#' the \eqn{\kappa \bullet X_t}
 #' @param support the support for E and X
 #' @param log should log-likelihood rather than likelihood be returned?
 #' @param return_distr should a matrix with conditional probabilities (given the past) for each time point be returned?
 llik_inarma_negbin <- function(vect, distr_E1 = NULL, tau, phi, psi, kappa,
-                             support = NULL, return_distr = FALSE){
+                               zeta, offspring, support = NULL, return_distr = FALSE){
 
   # check arguments:
   do.call(check_arguments_llik, as.list(environment()))
@@ -339,5 +388,6 @@ llik_inarma_negbin <- function(vect, distr_E1 = NULL, tau, phi, psi, kappa,
 
   # do computations:
   llik_inarma0_tv(vect = vect, distr_E1 = distr_E1, distr_I = matr_distr_I,
-                  phi = phi, kappa = kappa, return_distr = return_distr)
+                  phi = phi, kappa = kappa, zeta = zeta,
+                  offspring = offspring, return_distr = return_distr)
 }

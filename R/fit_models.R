@@ -3,8 +3,13 @@
 #' Maximum likelihood inference for INARMA(1,1) model as described in Bracher and Sobolova (2024).
 #' The model is defined as
 #' \deqn{X_t = (1 - \beta) \circ E_t + I_t}
-#' \deqn{E_t = \beta \circ E_{t - 1} + \kappa \circ X_{t - 1}}
-#' where \eqn{\circ} denotes binomial thinning. The two thinnings of \eqn{E_t} are coupled via
+#' \deqn{E_t = \beta \circ E_{t - 1} + \kappa \diamond X_{t - 1}}
+#' where \eqn{\circ} denotes binomial thinning and \eqn{\diamond} denotes either the
+#' binomial thinning, or the binomial-Poisson thinning. The binomial-Poisson
+#' thinning is defined as
+#' \deqn{\kappa \diamond X_t = \sum_{k = 1}^{X_t} Z_k, \quad \text{where} \quad Z_k \sim \text{Pois(\kappa\zeta)}} + \text{Binom}(1, \kappa(1 - \zeta))
+#' For \eqn{\zeta = 0}, the thinning \eqn{\diamond} reduces to the binomial thinning
+#' and for \eqn{\zeta = 1} to the Poisson thinning. The two thinnings of \eqn{E_t} are coupled via
 #' \deqn{[\beta \circ E_t, (1 - \beta) \circ E_t] \sim \text{Mult}(E_t, \beta, 1 - \beta).}
 #' The immigration process \eqn{I_t} consists of independently and identically distributed random variables which
 #' can be Poisson, Hermite or negative binomial. This distribution is charaterized by its mean, denoted by
@@ -35,6 +40,8 @@
 #'
 #' @param observed a vector of observed count values
 #' @param family the distributional family; one of `"Poisson"`, `"Hermite"` or `"NegBin"`
+#' @param offspring the offspring distribution, or in other words, the type of
+#' the \eqn{\kappa \diamond X_t} thinning; one of `"binomial"`, or `"binomial-Poisson"`
 #' @param start initial values for the optimization routine (on the internal scale; check the element `"optim"` of the return list)
 #' @param return_se should standard errors be returned?
 #' @param parameterization the function internally works with a slightly different notation as
@@ -66,6 +73,7 @@
 #' \item{fitting_method}{the method used to fit the model, here `"maximum_likelihood"`.}
 #' }
 fit_inarma <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
+                       offspring = c("binomial", "binomial-Poisson"),
                        parameterization = "beta",
                        # data_tau = matrix(1, nrow = length(observed), # currently deprecated
                        #                 dimnames = list(NULL, "Intercept")),
@@ -122,6 +130,9 @@ fit_inarma <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
     }
     start["log_mean_E1"] <- log(max(1, (observed[1] - coefficients_moments["tau"])/coefficients_moments["phi"]))
 
+    if (offspring == "binomial-Poisson") {
+      start = c(start, logit_zeta = 0)
+    }
 
     # old starting values
     # start <- c(rep(0, ncol(data_tau)),
@@ -138,7 +149,7 @@ fit_inarma <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
 
   }
 
-  nllik_vect <- function(pars, return_distr){
+  nllik_vect <- function(pars, offspring, return_distr){
     # print(".")
     lgt <- length(observed)
 
@@ -152,6 +163,8 @@ fit_inarma <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
 
     phi <- exp(pars["logit_phi"])/(1 + exp(pars["logit_phi"]))
     kappa <- exp(pars["logit_kappa"])/(1 + exp(pars["logit_kappa"]))
+    zeta <- exp(pars["logit_zeta"]) /
+      (1 + exp(pars["logit_zeta"]))
 
     if(family == "NegBin"){
       psi <- exp(pars["log_psi"])
@@ -176,21 +189,24 @@ fit_inarma <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
 
     if(family == "Poisson"){
       nllik <- -llik_inarma_pois(vect = observed, distr_E1 = distr_E1, tau = tau,
-                                phi = phi, kappa = kappa, support = support,
+                                phi = phi, kappa = kappa, zeta = zeta,
+                                support = support, offspring = offspring,
                                 return_distr = return_distr)
 
     }
 
     if(family == "Hermite"){
       nllik <- -llik_inarma_herm(vect = observed, distr_E1 = distr_E1, tau = tau,
-                                phi = phi, kappa = kappa, psi = psi, support = support,
-                                return_distr = return_distr)
+                                phi = phi, kappa = kappa, psi = psi,
+                                zeta = zeta, offspring = offspring,
+                                support = support, return_distr = return_distr)
     }
 
     if(family == "NegBin"){
       nllik <- -llik_inarma_negbin(vect = observed, distr_E1 = distr_E1, tau = tau,
-                                  phi = phi, kappa = kappa, psi = psi, support = support,
-                                  return_distr = return_distr)
+                                  phi = phi, kappa = kappa, psi = psi,
+                                  zeta = zeta, offspring = offspring,
+                                  support = support, return_distr = return_distr)
     }
 
     # some slight regularization on beta = 1 - phi to avoid very large values (which lead
@@ -206,8 +222,8 @@ fit_inarma <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
     return(nllik)
   }
 
-  opt <- optim(par = start, fn = nllik_vect, return_distr = FALSE,
-               hessian = return_se, control = control_optim)
+  opt <- optim(par = start, fn = nllik_vect, offspring = offspring,
+               return_distr = FALSE, hessian = return_se, control = control_optim)
 
   # very small overdispersion parameters indicate convergence issues.
   # try to catch these:
@@ -235,6 +251,7 @@ fit_inarma <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
   ret <- list()
 
   ret$family <- family
+  ret$offspring <- offspring
   # parameter estimates and standard errors on internal scale:
   ret$coefficients_raw <- opt$par
   ret$se_raw <- ret$cov_raw <- NULL
@@ -261,6 +278,12 @@ fit_inarma <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
                             (1 + exp(ret$coefficients_raw["logit_phi"]))),
          kappa = as.numeric(exp(ret$coefficients_raw["logit_kappa"])/
                               (1 + exp(ret$coefficients_raw["logit_kappa"]))))
+  if (offspring == "binomial-Poisson") {
+    ret$coefficients$zeta <- as.numeric(
+      exp(ret$coefficients_raw["logit_zeta"]) /
+        (1 + exp(ret$coefficients_raw["logit_zeta"]))
+    )
+  }
   if(family == "NegBin") ret$coefficients$psi <- as.numeric(exp(ret$coefficients_raw["log_psi"]))
   if(family == "Hermite") ret$coefficients$psi <- as.numeric(exp(ret$coefficients_raw["logit_psi"])/(1 + exp(ret$coefficients_raw["logit_psi"])))
   ret$coefficients$mean_E1 <- as.numeric(exp(ret$coefficients_raw["log_mean_E1"]))
@@ -281,6 +304,12 @@ fit_inarma <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
   ret$se <- list(tau = as.numeric(ret$se_raw["tau.Intercept"]*exp(ret$coefficients_raw["tau.Intercept"])^2),
                  phi = as.numeric(ret$se_raw["logit_phi"]*exp(ret$coefficients_raw["logit_phi"])/(1 + exp(ret$coefficients_raw["logit_phi"]))^2),
                  kappa = as.numeric(ret$se_raw["logit_kappa"]*exp(ret$coefficients_raw["logit_kappa"])/(1 + exp(ret$coefficients_raw["logit_kappa"]))^2))
+  if (offspring == "binomial-Poisson") {
+    ret$se$zeta <- as.numeric(
+      exp(ret$coefficients_raw["logit_zeta"]) /
+        (1 + exp(ret$coefficients_raw["logit_zeta"]))^2
+    )
+  }
   if(family == "NegBin") ret$se$psi <- as.numeric(ret$se_raw["log_psi"]*exp(ret$coefficients_raw["log_psi"])^2)
   if(family == "Hermite") ret$se$psi <- as.numeric(ret$se_raw["logit_psi"]*exp(ret$coefficients_raw["logit_psi"])/(1 + exp(ret$coefficients_raw["logit_psi"]))^2)
   ret$se$mean_E1 <- as.numeric(ret$se_raw["log_mean_E1"]*exp(ret$coefficients_raw["log_mean_E1"])^2)
@@ -296,7 +325,7 @@ fit_inarma <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
   ret$observed <- observed
   # to get fitted values:
   # obtain detailed likelihood, i.e. distributions for each t
-  lik_distr <- -nllik_vect(pars = ret$coefficients_raw, return_distr = TRUE)
+  lik_distr <- -nllik_vect(pars = ret$coefficients_raw, offspring = offspring, return_distr = TRUE)
   # obtain expected values, variances and Pearson residuals from distribution:
   ret$fitted_values <- colSums((t(lik_distr)*(seq_along(lik_distr[1, ]) - 1)))
   ret$fitted_variance <- colSums((t(lik_distr)*(seq_along(lik_distr[1, ]) - 1)^2)) - ret$fitted_values^2
@@ -451,6 +480,10 @@ fit_inar <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
     phi <- 1
     kappa <- exp(pars["logit_kappa"])/(1 + exp(pars["logit_kappa"]))
 
+    if (offspring == "binomial-Poisson") {
+      start = c(start, logit_zeta = 0)
+    }
+
     if(family == "NegBin"){
       psi <- exp(pars["log_psi"])
     }
@@ -474,15 +507,16 @@ fit_inar <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
 
     if(family == "Poisson"){
       llik <- -llik_inarma_pois(vect = observed, distr_E1 = distr_E1, tau = tau,
-                                phi = phi, kappa = kappa, support = support,
+                                phi = phi, kappa = kappa, zeta = zeta,
+                                offspring = offspring, support = support,
                                 return_distr = return_distr)
       return(llik)
     }
 
     if(family == "Hermite"){
       llik <- -llik_inarma_herm(vect = observed, distr_E1 = distr_E1, tau = tau,
-                                phi = phi, kappa = kappa, psi = psi, support = support,
-                                return_distr = return_distr)
+                                phi = phi, kappa = kappa, psi = psi,
+                                support = support, return_distr = return_distr)
       return(llik)
     }
 
