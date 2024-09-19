@@ -4,10 +4,19 @@
 \alias{sim_inarma_negbin}
 \title{Simulate from a negative binomial INARMA(1,1) model}
 \usage{
-sim_inarma_negbin(tau, psi, phi, kappa, E1 = NULL, distr_E1 = NULL, lgt = NULL)
+sim_inarma_negbin(
+  tau,
+  psi,
+  phi,
+  kappa,
+  zeta,
+  E1 = NULL,
+  distr_E1 = NULL,
+  lgt = NULL
+)
 }
 \arguments{
-\item{tau, psi, phi, kappa}{the model parameters.}
+\item{tau, psi, phi, kappa, zeta}{the model parameters.}
 
 \item{E1}{an initial value for \eqn{E_1}.}
 

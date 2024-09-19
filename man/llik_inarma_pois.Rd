@@ -11,6 +11,8 @@ llik_inarma_pois(
   tau,
   phi,
   kappa,
+  zeta,
+  offspring,
   support = NULL,
   return_distr = FALSE
 )
@@ -22,9 +24,10 @@ llik_inarma_pois(
 
 \item{tau}{model parameter, scalar or a vector for time-varying immigration distributions}
 
-\item{phi, kappa}{the model parameters, scalar}
+\item{phi, kappa, zeta}{the model parameters, scalar}
 
-\item{support}{the support for E and X}
+\item{offspring}{the offspring distribution, or in other words, the type of
+the \eqn{\kappa \bullet X_t}}
 
 \item{return_distr}{should a matrix with conditional probabilities (given the past) for each time point be returned?}
 

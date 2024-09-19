@@ -3,12 +3,12 @@
 #' Maximum likelihood inference for INARMA(1,1) model as described in Bracher and Sobolova (2024).
 #' The model is defined as
 #' \deqn{X_t = (1 - \beta) \circ E_t + I_t}
-#' \deqn{E_t = \beta \circ E_{t - 1} + \kappa \diamond X_{t - 1}}
-#' where \eqn{\circ} denotes binomial thinning and \eqn{\diamond} denotes either the
+#' \deqn{E_t = \beta \circ E_{t - 1} + \kappa \bullet X_{t - 1}}
+#' where \eqn{\circ} denotes binomial thinning and \eqn{\bullet} denotes either the
 #' binomial thinning, or the binomial-Poisson thinning. The binomial-Poisson
 #' thinning is defined as
-#' \deqn{\kappa \diamond X_t = \sum_{k = 1}^{X_t} Z_k, \quad \text{where} \quad Z_k \sim \text{Pois(\kappa\zeta)}} + \text{Binom}(1, \kappa(1 - \zeta))
-#' For \eqn{\zeta = 0}, the thinning \eqn{\diamond} reduces to the binomial thinning
+#' \deqn{\kappa \bullet X_t = \sum_{k = 1}^{X_t} Z_k, \quad \text{where} \quad Z_k \sim \text{Pois}(\kappa\zeta) + \text{Binom}\bigl(1, \kappa(1 - \zeta)\bigr)}
+#' For \eqn{\zeta = 0}, the thinning \eqn{\bullet} reduces to the binomial thinning
 #' and for \eqn{\zeta = 1} to the Poisson thinning. The two thinnings of \eqn{E_t} are coupled via
 #' \deqn{[\beta \circ E_t, (1 - \beta) \circ E_t] \sim \text{Mult}(E_t, \beta, 1 - \beta).}
 #' The immigration process \eqn{I_t} consists of independently and identically distributed random variables which
@@ -41,7 +41,7 @@
 #' @param observed a vector of observed count values
 #' @param family the distributional family; one of `"Poisson"`, `"Hermite"` or `"NegBin"`
 #' @param offspring the offspring distribution, or in other words, the type of
-#' the \eqn{\kappa \diamond X_t} thinning; one of `"binomial"`, or `"binomial-Poisson"`
+#' the \eqn{\kappa \bullet X_t} thinning; one of `"binomial"`, or `"binomial-Poisson"`
 #' @param start initial values for the optimization routine (on the internal scale; check the element `"optim"` of the return list)
 #' @param return_se should standard errors be returned?
 #' @param parameterization the function internally works with a slightly different notation as
