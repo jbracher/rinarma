@@ -4,10 +4,18 @@
 \alias{sim_inarma_poisson}
 \title{Simulate from a Poisson INARMA(1,1) model}
 \usage{
-sim_inarma_poisson(tau, phi, kappa, E1 = NULL, distr_E1 = NULL, lgt = NULL)
+sim_inarma_poisson(
+  tau,
+  phi,
+  kappa,
+  zeta = NULL,
+  E1 = NULL,
+  distr_E1 = NULL,
+  lgt = NULL
+)
 }
 \arguments{
-\item{tau, phi, kappa}{the model parameters.}
+\item{tau, phi, kappa, zeta}{the model parameters.}
 
 \item{E1}{an initial value for \eqn{E_1}.}
 

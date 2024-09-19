@@ -11,7 +11,9 @@ check_arguments_llik(
   phi,
   psi,
   kappa,
+  zeta,
   support,
+  offspring,
   log,
   return_distr
 )
@@ -23,9 +25,12 @@ check_arguments_llik(
 
 \item{tau}{model parameter, scalar or a vector for time-varying immigration distributions}
 
-\item{phi, kappa}{the model parameters, scalar}
+\item{phi, kappa, zeta}{the model parameters, scalar}
 
 \item{support}{the support for E and X}
+
+\item{offspring}{the offspring distribution, or in other words, the type of
+the \eqn{\kappa \bullet X_t}}
 
 \item{log}{should log-likelihood rather than likelihood be returned?}
 

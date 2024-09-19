@@ -4,14 +4,19 @@
 \alias{tm_A_to_E}
 \title{Get transition matrix from A[t] = (E[t] - L[t]) to E[t + 1]}
 \usage{
-tm_A_to_E(kappa, X_tminus1, support_A, support_E)
+tm_A_to_E(vect0, X_tminus1, support_A, support_E)
 }
 \arguments{
+\item{X_tminus1}{value of X[t - 1]; also implies the support}
+
+\item{support_A}{the chosen support for A}
+
+\item{support_E}{the chosen support for E}
+
 \item{kappa}{the parameter kappa (offspring mean)}
 
-\item{X_tminus1}{vector of probabilities for X[t - 1]; also implies the support}
-
-\item{support_A}{the chosen support for E}
+\item{zeta}{the model parameter `zeta`; (0 corresponds to the binomial thinning,
+1 to the Poisson thinning), values in between to the mixed thinning operator}
 }
 \value{
 a matrix containing transition probabilities (values of A in rows, of E in columns)

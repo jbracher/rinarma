@@ -12,6 +12,8 @@ llik_inarma_herm(
   phi,
   psi,
   kappa,
+  zeta,
+  offspring,
   support = NULL,
   return_distr = FALSE
 )
@@ -23,7 +25,10 @@ llik_inarma_herm(
 
 \item{tau}{model parameter, scalar or a vector for time-varying immigration distributions}
 
-\item{phi, kappa, psi}{the model parameters, scalar}
+\item{phi, kappa, psi, zeta}{the model parameters, scalar}
+
+\item{offspring}{the offspring distribution, or in other words, the type of
+the \eqn{\kappa \bullet X_t}}
 
 \item{support}{the support for E and X}
 

@@ -10,19 +10,23 @@ sim_inarma(
   phi = NULL,
   beta = NULL,
   kappa,
+  zeta = NULL,
   lgt,
+  offspring = c("binomial", "binomial-Poisson"),
   family = c("Poisson", "Hermite", "NegBin")
 )
 }
 \arguments{
-\item{tau, psi, phi, beta, kappa}{the model parameters. Note that `phi` and `beta`
+\item{tau, psi, phi, beta, kappa, zeta}{the model parameters. Note that `phi` and `beta`
 characterize the same underlying parameter, with `phi = 1 - beta`. Only one
 of them should be specified, but we keep both to ensure compatibility for
 different settings.}
 
 \item{lgt}{the length of the simulated time series.}
 
-\item{family}{family the distributional family; one of `"Poisson"`, `"Hermite"` or `"NegBin"`.}
+\item{offspring}{type of the thinning \eqn{\kappa \bullet X_t}; one of `"binomial"`, or `"binomial-Poisson"`.}
+
+\item{family}{distribution of the imports/innovations; one of `"Poisson"`, `"Hermite"` or `"NegBin"`.}
 }
 \value{
 A named list with the following elements:

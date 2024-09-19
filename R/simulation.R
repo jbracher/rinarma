@@ -9,7 +9,7 @@
 #' of them should be specified, but we keep both to ensure compatibility for
 #' different settings.
 #' @param lgt the length of the simulated time series.
-#' @offspring type of the thinning \eqn{\kappa \diamond X_t}; one of `"binomial"`, or `"binomial-Poisson"`.
+#' @param offspring type of the thinning \eqn{\kappa \bullet X_t}; one of `"binomial"`, or `"binomial-Poisson"`.
 #' @param family distribution of the imports/innovations; one of `"Poisson"`, `"Hermite"` or `"NegBin"`.
 #' @return A named list with the following elements:
 #' \describe{

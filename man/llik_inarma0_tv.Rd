@@ -10,6 +10,8 @@ llik_inarma0_tv(
   distr_I,
   phi,
   kappa,
+  zeta,
+  offspring,
   log = TRUE,
   return_distr = FALSE
 )
@@ -21,7 +23,10 @@ llik_inarma0_tv(
 
 \item{distr_I}{the immigration distribution (probabilities for 0, ..., M); also implies the support for E and X}
 
-\item{phi, kappa}{the model parameters}
+\item{phi, kappa, zeta}{the model parameters}
+
+\item{offspring}{the offspring distribution, or in other words, the type of
+the \eqn{\kappa \bullet X_t} thinning; one of `"binomial"`, or `"binomial-Poisson"`}
 
 \item{log}{should log-likelihood rather than likelihood be returned?}
 

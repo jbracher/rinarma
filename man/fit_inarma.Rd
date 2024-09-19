@@ -7,6 +7,7 @@
 fit_inarma(
   observed,
   family = c("Poisson", "Hermite", "NegBin"),
+  offspring = c("binomial", "binomial-Poisson"),
   parameterization = "beta",
   start = NULL,
   return_se = TRUE,
@@ -17,6 +18,9 @@ fit_inarma(
 \item{observed}{a vector of observed count values}
 
 \item{family}{the distributional family; one of `"Poisson"`, `"Hermite"` or `"NegBin"`}
+
+\item{offspring}{the offspring distribution, or in other words, the type of
+the \eqn{\kappa \bullet X_t} thinning; one of `"binomial"`, or `"binomial-Poisson"`}
 
 \item{parameterization}{the function internally works with a slightly different notation as
 the paper by Bracher and Sobolova (2024). The default `parameterization = "beta"` will return results
@@ -58,8 +62,13 @@ can serve to compute fitted values.}
 Maximum likelihood inference for INARMA(1,1) model as described in Bracher and Sobolova (2024).
 The model is defined as
 \deqn{X_t = (1 - \beta) \circ E_t + I_t}
-\deqn{E_t = \beta \circ E_{t - 1} + \kappa \circ X_{t - 1}}
-where \eqn{\circ} denotes binomial thinning. The two thinnings of \eqn{E_t} are coupled via
+\deqn{E_t = \beta \circ E_{t - 1} + \kappa \bullet X_{t - 1}}
+where \eqn{\circ} denotes binomial thinning and \eqn{\bullet} denotes either the
+binomial thinning, or the binomial-Poisson thinning. The binomial-Poisson
+thinning is defined as
+\deqn{\kappa \bullet X_t = \sum_{k = 1}^{X_t} Z_k, \quad \text{where} \quad Z_k \sim \text{Pois}(\kappa\zeta) + \text{Binom}\bigl(1, \kappa(1 - \zeta)\bigr)}
+For \eqn{\zeta = 0}, the thinning \eqn{\bullet} reduces to the binomial thinning
+and for \eqn{\zeta = 1} to the Poisson thinning. The two thinnings of \eqn{E_t} are coupled via
 \deqn{[\beta \circ E_t, (1 - \beta) \circ E_t] \sim \text{Mult}(E_t, \beta, 1 - \beta).}
 The immigration process \eqn{I_t} consists of independently and identically distributed random variables which
 can be Poisson, Hermite or negative binomial. This distribution is charaterized by its mean, denoted by
@@ -70,6 +79,11 @@ The function uses a variation of the forward algorithm to fit the models. This i
 computationally expensive, meaning that the optimization can be quite lengthy
 already for medium-level counts. If the time series contains values above ~15
 moment-based estimation using `fit_inarma_moments` may be more practical.
+
+Note that to improve convergence behaviour the function uses some slight regularization
+which prevents \eqn{beta > 0.97} and \eqn{psi < 0.03}. If \eqn{psi} is nonetheless
+small, it may be more suitable to fit a Poisson model rather than a negative
+binomial or Hermite.
 }
 \examples{
 data("measles")

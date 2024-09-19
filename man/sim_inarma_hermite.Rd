@@ -9,6 +9,7 @@ sim_inarma_hermite(
   psi,
   phi,
   kappa,
+  zeta,
   a1 = NULL,
   a2 = NULL,
   E1 = NULL,
@@ -17,7 +18,7 @@ sim_inarma_hermite(
 )
 }
 \arguments{
-\item{tau, psi, phi, kappa}{the model parameters.}
+\item{tau, psi, phi, kappa, zeta}{the model parameters.}
 
 \item{a1, a2}{alternative parameterization of the Hermite, to be used instead of `tau, psi`.}
 
