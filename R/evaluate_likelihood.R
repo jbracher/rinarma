@@ -256,7 +256,7 @@ check_arguments_llik <- function(vect, distr_E1, tau, phi, psi, kappa,
 
 }
 
-#' Evaluating the likelihood in the Poisson case
+#' Evaluating the likelihood in the Poisson INARMA(1,1) model
 #' A wrapper around llik_inarma0_tv
 #' @param vect the vector of observed values
 #' @param distr_E1 a vector of probabilities used to initialize E1
@@ -295,7 +295,7 @@ llik_inarma_pois <- function(vect, distr_E1 = NULL, tau, phi, kappa, zeta,
 
 
 
-#' Evaluating the likelihood in the Hermite case
+#' Evaluating the likelihood in the Hermite INARMA(1,1) model
 #' A wrapper around llik_inarma0_tv
 #' @param vect the vector of observed values
 #' @param distr_E1 a vector of probabilities used to initialize E1
@@ -347,7 +347,7 @@ llik_inarma_herm <- function(vect, distr_E1 = NULL, tau, phi, psi, kappa,
 
 
 
-#' Evaluating the likelihood in the negative binomial case
+#' Evaluating the likelihood in the negative binomial INARMA(1,1) model
 #' A wrapper around llik_inarma0_tv
 #' @param vect the vector of observed values
 #' @param distr_E1 a vector of probabilities used to initialize E1
@@ -390,4 +390,94 @@ llik_inarma_negbin <- function(vect, distr_E1 = NULL, tau, phi, psi, kappa,
   llik_inarma0_tv(vect = vect, distr_E1 = distr_E1, distr_I = matr_distr_I,
                   phi = phi, kappa = kappa, zeta = zeta,
                   offspring = offspring, return_distr = return_distr)
+}
+
+
+
+#' Evaluate log-likelihood of a Poisson INGARCH(1,1) model
+#' @param vect the vector of observed values
+#' @param tau,kappa,beta,mean_E1 parameters of the Poisson INGARCH(1,1)
+#' model on the transformed scales in the thinning-based formulation
+#' @param return_fitted: should fitted values be returned?
+#' @return log-likelihood, or (if return_fitted) a list containing the log-likelihood
+# and the fitted values
+llik_ingarch <- function(vect, tau, kappa, beta, mean_E1,
+                         return_fitted = FALSE){
+  # transform the thinning parameters to ones from the GLM-based formulation
+  nu <- tau * (1 - beta)
+  alpha <- kappa * (1 - beta)
+  lambda1 <- mean_E1 * (1 - beta) + tau
+
+  lgt <- length(vect)
+  lambda <- numeric(lgt)
+  lambda[1] <- lambda1
+  for(i in 2:lgt){
+    lambda[i] <- nu + alpha*vect[i - 1] + beta*lambda[i - 1]
+  }
+  llik <- sum(dpois(vect, lambda, log = TRUE))
+
+  if(return_fitted){
+    return(list(value = llik, fitted = lambda))
+  }else{
+    return(llik)
+  }
+}
+
+#' Evaluate log-likelihood for a negative binomial INGARCH(1, 1) model
+#' @param vect the vector of observed values
+#' @param tau,kappa,beta,psi,mean_E1 parameters of the Negative binomial
+#' INGARCH(1,1) model in the thinning-based formulation
+#' @param return_fitted: should fitted values be returned?
+#' @return log-likelihood, or (if return_fitted) a list containing the log-likelihood
+# and the fitted values
+llik_nbingarch <- function(vect, tau, kappa, beta, psi, mean_E1,
+                           return_fitted = FALSE){
+  # transform the thinning parameters to ones from the GLM-based formulation
+  theta <- psi / log(psi + 1)
+  nu <- tau * (1 - beta) * theta
+  alpha <- kappa * (1 - beta) * theta
+  lambda1 <- (mean_E1 * (1 - beta) + tau) * theta
+
+  lgt <- length(vect)
+  lambda <- numeric(lgt)
+  lambda[1] <- lambda1
+  for(i in 2:lgt){
+    lambda[i] <- nu + alpha*vect[i - 1] + beta*lambda[i - 1]
+  }
+  llik <- sum(dnbinom(vect, mu = lambda, size = lambda/psi, log = TRUE))
+
+  if(return_fitted){
+    return(list(value = llik, fitted = lambda))
+  }else{
+    return(llik)
+  }
+}
+
+#' Evaluate log-likelihood for a Hermite INGARCH(1, 1) model
+#' @param vect the vector of observed values
+#' @param tau,kappa,beta,psi,mean_E1 parameters of the Hermite INGARCH(1,1)
+#' model in the thinning-based formulation
+#' @param return_fitted: should fitted values be returned?
+#' @return log-likelihood, or (if return_fitted) a list containing the log-likelihood
+# and the fitted values
+llik_hingarch <- function(vect, tau, kappa, beta, psi, mean_E1,
+                          return_fitted = FALSE){
+  # transform the thinning parameters to ones from the GLM-based formulation
+  theta <- 2 / (2 - psi)
+  nu <- tau * (1 - beta) * theta
+  alpha <- kappa * (1 - beta) * theta
+  lambda1 <- (mean_E1 * (1 - beta) + tau) * theta
+
+  lgt <- length(vect)
+  lambda <- numeric(lgt)
+  lambda[1] <- lambda1
+  for(i in 2:lgt){
+    lambda[i] <- nu + alpha*vect[i - 1] + beta*lambda[i - 1]
+  }
+  llik <- sum(dherm(vect, mu = lambda, psi = psi, log = TRUE))
+  if(return_fitted){
+    return(list(value = llik, fitted = lambda))
+  }else{
+    return(llik)
+  }
 }
