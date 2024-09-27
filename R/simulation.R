@@ -243,15 +243,20 @@ sim_loop <- function (phi, kappa, zeta, I, E1, lgt) {
   X <- rep(NA, lgt)
   X[1] <- I[1] + E[1] - L
 
-  for(t in 2:lgt){
-    # # version that works for INARMA:
-    # E[t] <- E[t - 1] + I[t - 1] - rbinom(1, X[t - 1], 1 - kappa)
-    # X[t] <- I[t] + rbinom(1, E[t], phi)
+  if (zeta == 0) {
+    # version that was used for generating the data from the simulation study:
+    for(t in 2:lgt){
+        E[t] <- E[t - 1] + I[t - 1] - rbinom(1, X[t - 1], 1 - kappa)
+        X[t] <- I[t] + rbinom(1, E[t], phi)
+    }
+  } else {
     # version that works for the Poisson-Binomial thinning too:
-    E[t] <- L + rbinom(1, X[t - 1], kappa * (1 - zeta)) +
-      rpois(1, X[t - 1] * kappa * zeta)
-    L <- rbinom(1, E[t], 1 - phi)
-    X[t] <- I[t] + (E[t] - L)
+    for(t in 2:lgt){
+        E[t] <- L + rbinom(1, X[t - 1], kappa * (1 - zeta)) +
+          rpois(1, X[t - 1] * kappa * zeta)
+        L <- rbinom(1, E[t], 1 - phi)
+        X[t] <- I[t] + (E[t] - L)
+      }
   }
 
   return(list(X = X, E = E))
