@@ -153,3 +153,110 @@ fit_inarma_moments <- function(observed, family = c("Poisson", "Hermite", "NegBi
 
   return(ret)
 }
+
+
+#' See `?fit_inarma_moments` for details on the model definition.
+#'
+#' The function implements some heuristics to ensure model parameters fall into the allowed ranges.
+#' See Bracher and Sobolova (2024) for details.
+#'
+#' @examples
+#' data("measles")
+#' X <- measles$value
+#' fit <- fit_inar_moments(X, family = "Poisson")
+#' summary(fit)
+#'
+#'
+#' @export
+#' @param observed a vector of observed count values
+#' @param family the distributional family; one of `"Poisson"`, `"Hermite"` or `"NegBin"`
+#' @param parameterization the function internally works with a slightly different notation as
+
+#' @return A named list with the following elements.
+#' \describe{
+#' \item{coefficients}{the estimated coefficients.}
+#' \item{coefficients_uncorrected}{the estimated model coefficients without any corrections
+#' (i.e., coefficients can be negative).}
+#' \item{nobs}{the number of observations.}
+#' \item{fitting_method}{the method used to fit the model, here `"moments"`.}
+#' }
+#'
+fit_inar_moments <- function(observed, family = c("Poisson", "Hermite", "NegBin")){
+  # get the four relevant moments:
+  mu <- mean(observed)
+  sigma2 <- var(observed)
+  acor <- acf(observed, type = "correlation", plot = FALSE)$acf[-1]
+
+  # compute model coefficients from moments:
+  coefficients <- list(
+    tau = mu * (1 - acor[1]),
+    kappa = acor[1]
+  )
+  sigma2_tau <- (sigma2 - acor[1] / (1 + acor[1]) * mu) * (1 - acor[1]^2)
+  if(family == "Hermite"){
+    coefficients$psi <- (sigma2_tau / coefficients$tau) - 1
+  }
+
+  if(family == "NegBin"){
+    coefficients$psi <- (sigma2_tau - coefficients$tau) / coefficients$tau^2
+  }
+
+  # function to check all coefficients are in their allowed ranges:
+  check_coefficients <- function(coefficients){
+    ret <- TRUE
+    coefficients <- as.list(coefficients)
+    if(coefficients$kappa > 0.95){ret <- FALSE;   warning("kappa is not in [0, 0.95) - risk of implausible results and numerical instability.")}
+    if(family == "Hermite"){
+      if(coefficients$psi < 0 | coefficients$psi > 0.95){ret <- FALSE;   warning("psi is not in [0, 0.95) - risk of implausible results and numerical instability.")}
+    }
+    if(family == "NegBin"){
+      if(coefficients$psi < 0){ret <- FALSE;  warning("Implausible estimation results: psi is negative.")}
+    }
+    return(ret)
+  }
+
+  # check if all coefficients are in their allowed ranges:
+  coefficients_admissible <- check_coefficients(coefficients)
+
+  # if not: repeat estimation using moments shifted to be compatible with estimation equations:
+  coefficients_uncorrected <- NULL
+  if((sigma2 < mu & family != "Poisson") | coefficients$kappa > 0.95){ # !coefficients_admissible
+    coefficients_uncorrected <- coefficients # store original estimates
+
+    # shift moments to be compatible:
+    message("Repeating estimation with adapted moments...")
+    sigma2 <- max(mu, sigma2)
+
+    # re-run estimation
+    coefficients <- list(
+      tau = mu * (1 - acor[1]),
+      kappa = acor[1]
+    )
+    sigma2_tau <- (sigma2 - acor[1] / (1 + acor[1]) * mu) * (1 - acor[1]^2)
+    if(family == "Hermite"){
+      coefficients$psi <- (sigma2_tau/tau) - 1
+    }
+
+    if(family == "NegBin"){
+      coefficients$psi <- (sigma2_tau - tau) / tau^2
+    }
+    coefficients <- unlist(coefficients)
+
+    # re-check:
+    coefficients_admissible <- check_coefficients(coefficients)
+    if(!coefficients_admissible){
+      warning("Estimation results still implausible, but returning as is.")
+    }
+  }
+
+  ret <- list()
+  ret$coefficients <- unlist(coefficients)
+  ret$coefficients_uncorrected <- coefficients_uncorrected
+  ret$observed <- observed
+  ret$nobs <- length(observed)
+  ret$fitting_method <- "moments"
+
+  class(ret) <- "inarma"
+
+  return(ret)
+}

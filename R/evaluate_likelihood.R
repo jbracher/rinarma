@@ -256,6 +256,8 @@ check_arguments_llik <- function(vect, distr_E1, tau, phi, psi, kappa,
 
 }
 
+
+
 #' Evaluating the likelihood in the Poisson INARMA(1,1) model
 #' A wrapper around llik_inarma0_tv
 #' @param vect the vector of observed values
@@ -394,10 +396,75 @@ llik_inarma_negbin <- function(vect, distr_E1 = NULL, tau, phi, psi, kappa,
 
 
 
+#' Evaluate log-likelihood of a Poisson INAR(1) model
+#' @param vect the vector of observed values
+#' @param tau,kappa,zeta parameters of the Poisson INAR(1) model
+#' @return log-likelihood
+llik_inar_pois <- function(vect, tau, kappa, zeta){
+
+  lgt <- length(vect)
+  p <- kappa * (1 - zeta)
+
+  # Bind the observations and their lagged series into a matrix
+  obs_lagged_mat <- cbind(vect[-lgt], vect[-1])
+
+  llik <- sum(log(apply(obs_lagged_mat, 1, function (x) {
+    sum(dbinom(0:min(x), size = x[1], prob = p) *
+          dpois(x[2] - 0:min(x), tau + x[1] * zeta * kappa))
+  })))
+
+  return(llik)
+}
+
+
+
+#' Evaluate log-likelihood for a negative binomial INAR(1) model
+#' @param vect the vector of observed values
+#' @param tau,kappa,beta,psi parameters of the Negative binomial
+#' INAR(1) model in the thinning-based formulation
+#' @return log-likelihood
+llik_inar_negbin <- function(vect, tau, kappa, psi){
+  lgt <- length(vect)
+
+  # Bind the observations and their lagged series into a matrix
+  obs_lagged_mat <- cbind(vect[-lgt], vect[-1])
+
+  # binomial thinning only
+  llik <- sum(log(apply(obs_lagged_mat, 1, function (x) {
+    sum(dbinom(0:min(x), size = x[1], prob = kappa) *
+          dnbinom(x[2] - 0:min(x), mu = tau, size = 1 / psi))
+  })))
+  return(llik)
+}
+
+#' Evaluate log-likelihood for a Hermite INAR(1) model
+#' @param vect the vector of observed values
+#' @param tau,kappa,beta,psi parameters of the Hermite INAR(1) model in the
+#' thinning-based formulation
+#' @return log-likelihood
+llik_inar_herm <- function(vect, tau, kappa, psi){
+
+  lgt <- length(vect)
+
+  # Bind the observations and their lagged series into a matrix
+  obs_lagged_mat <- cbind(vect[-lgt], vect[-1])
+
+
+  # binomial thinning only
+  llik <- sum(log(apply(obs_lagged_mat, 1, function (x) {
+    sum(dbinom(0:min(x), size = x[1], prob = kappa) *
+          dherm(x[2] - 0:min(x), mu = tau, psi = psi))
+  })))
+
+  return(llik)
+}
+
+
+
 #' Evaluate log-likelihood of a Poisson INGARCH(1,1) model
 #' @param vect the vector of observed values
 #' @param tau,kappa,beta,mean_E1 parameters of the Poisson INGARCH(1,1)
-#' model on the transformed scales in the thinning-based formulation
+#' model in the thinning-based formulation
 #' @param return_fitted: should fitted values be returned?
 #' @return log-likelihood, or (if return_fitted) a list containing the log-likelihood
 # and the fitted values

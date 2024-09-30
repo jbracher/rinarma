@@ -438,6 +438,7 @@ choose_support <- function(observed, tau, phi, kappa, psi = NULL, family){
 #' }
 #' @export
 fit_inar <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
+                     offspring = c("binomial", "binomial-Poisson"),
                      # data_tau = matrix(1, nrow = length(observed), # currently deprecated
                      #                 dimnames = list(NULL, "Intercept")),
                      start = NULL,
@@ -466,6 +467,33 @@ fit_inar <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
                       "log_mean_E1")
   }
 
+  coefficients_moments <- fit_inar_moments(observed, family = family)$coefficients
+
+  # initialize vector of transformed moment estimators (scale used internally)
+  start <- c("log_tau" = NA,
+             "logit_kappa" = NA,
+             "logit_psi" =  if(family == "Hermite") NA,
+             "log_psi" = if(family == "NegBin") NA)
+
+  # fill that vector:
+  start["log_tau"] <- log(coefficients_moments["tau"])
+  start["logit_kappa"] <- log(coefficients_moments["kappa"]/(1 - coefficients_moments["kappa"]))
+  if(family == "Hermite"){
+    start["logit_psi"] <- log(coefficients_moments["psi"]/(1 - coefficients_moments["psi"]))
+    if (is.nan(start["logit_psi"])) start["logit_psi"] <- 0
+  }
+  if(family == "NegBin"){
+    start["log_psi"] <- log(coefficients_moments["psi"])
+  }
+
+  if (offspring == "binomial-Poisson") {
+    if (family == "Poisson") {
+      start = c(start, logit_zeta = 0)
+    } else {
+      stop("binomial-Poisson thinning implemented for the family = 'Poisson' only.")
+    }
+  }
+
   nllik_vect <- function(pars, return_distr = FALSE){
     lgt <- length(observed)
 
@@ -477,53 +505,31 @@ fit_inar <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
       exp(beta_tau)
     }
 
-    phi <- 1
-    kappa <- exp(pars["logit_kappa"])/(1 + exp(pars["logit_kappa"]))
-
-    if (offspring == "binomial-Poisson") {
-      start = c(start, logit_zeta = 0)
+    if (offspring == "binomial") {
+      zeta <- 0
+    } else if (offspring == "binomial-Poisson") {
+      zeta <- exp(pars["logit_zeta"])/(1 + exp(pars["logit_zeta"]))
     }
+    kappa <- exp(pars["logit_kappa"])/(1 + exp(pars["logit_kappa"]))
+    tau <- exp(pars["log_tau"])
 
-    if(family == "NegBin"){
-      psi <- exp(pars["log_psi"])
+    if(family == "Poisson"){
+      llik <- -llik_inar_pois(vect = observed, tau = tau, kappa = kappa,
+                                zeta = zeta)
+      return(llik)
     }
 
     if(family == "Hermite"){
       psi <- exp(pars["logit_psi"])/(1 + exp(pars["logit_psi"]))
-    }
-
-    # choose support could likely be done more cleverly)
-    support <- choose_support(observed = observed,
-                              tau = tau, phi = phi,
-                              kappa = kappa, psi = psi,
-                              family = family)
-
-    # initialization of E1 if necessary:
-    if("log_mean_E1" %in% names(pars)){
-      distr_E1 <- dpois(support, exp(pars["log_mean_E1"]))
-    }else{
-      distr_E1 <- NULL
-    }
-
-    if(family == "Poisson"){
-      llik <- -llik_inarma_pois(vect = observed, distr_E1 = distr_E1, tau = tau,
-                                phi = phi, kappa = kappa, zeta = zeta,
-                                offspring = offspring, support = support,
-                                return_distr = return_distr)
-      return(llik)
-    }
-
-    if(family == "Hermite"){
-      llik <- -llik_inarma_herm(vect = observed, distr_E1 = distr_E1, tau = tau,
-                                phi = phi, kappa = kappa, psi = psi,
-                                support = support, return_distr = return_distr)
+      llik <- -llik_inar_herm(vect = observed,tau = tau, kappa = kappa,
+                              psi = psi)
       return(llik)
     }
 
     if(family == "NegBin"){
-      llik <- -llik_inarma_negbin(vect = observed, distr_E1 = distr_E1, tau = tau,
-                                  phi = phi, kappa = kappa, psi = psi, support = support,
-                                  return_distr = return_distr)
+      psi <- exp(pars["log_psi"])
+      llik <- -llik_inar_negbin(vect = observed, tau = tau, kappa = kappa,
+                                psi = psi)
       return(llik)
     }
   }
@@ -552,6 +558,7 @@ fit_inar <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
   ret <- list()
 
   ret$family <- family
+  ret$offspring <- offspring
 
   # parameter estimates and standard errors:
   ret$coefficients_raw <- opt$par
@@ -563,15 +570,8 @@ fit_inar <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
   }
 
   # parameter estimates on original scale:
-  # extract time-varying values of tau:
-  beta_tau <- opt$par[grepl("tau.", names(opt$par))]
-  tau <- if(tau_is_time_varying){
-    exp(data_tau %*% beta_tau)
-  }else{
-    exp(beta_tau)
-  }
   ret$coefficients <-
-    list(tau = tau,
+    list(tau = exp(ret$coefficients_raw["log_tau"]),
          kappa = exp(ret$coefficients_raw["logit_kappa"])/
            (1 + exp(ret$coefficients_raw["logit_kappa"])))
   if(family == "NegBin") ret$coefficients$psi <- exp(ret$coefficients_raw["log_psi"])
@@ -584,14 +584,7 @@ fit_inar <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
 
   ret$observed <- observed
   # to get fitted values:
-  # obtain detailed likelihood, i.e. distributions for each t
-  lik_distr <- -nllik_vect(pars = ret$coefficients_raw, return_distr = TRUE)
-  # obtain expected value from distribution:
-  ret$fitted_values <- colSums((t(lik_distr)*(seq_along(lik_distr[1, ]) - 1)))
-  ret$fitted_variance <- colSums((t(lik_distr)*(seq_along(lik_distr[1, ]) - 1)^2)) - ret$fitted_values^2
-  ret$pearson_residuals <- (observed - ret$fitted_values)/sqrt(ret$fitted_variance)
-  # also return entire matrix:
-  ret$lik_distr <- lik_distr
+
 
   # other:
   ret$dim <- length(ret$coefficients)
