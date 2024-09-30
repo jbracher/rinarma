@@ -2,7 +2,7 @@
 % Please edit documentation in R/evaluate_likelihood.R
 \name{llik_inarma_herm}
 \alias{llik_inarma_herm}
-\title{Evaluating the likelihood in the Hermite case
+\title{Evaluating the likelihood in the Hermite INARMA(1,1) model
 A wrapper around llik_inarma0_tv}
 \usage{
 llik_inarma_herm(
@@ -40,6 +40,6 @@ the \eqn{\kappa \bullet X_t}}
 the conditional (log) likelihood as a numeric or a matrix containing all relevant conditional probabilities (if return_distr == TRUE)
 }
 \description{
-Evaluating the likelihood in the Hermite case
+Evaluating the likelihood in the Hermite INARMA(1,1) model
 A wrapper around llik_inarma0_tv
 }

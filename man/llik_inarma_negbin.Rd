@@ -2,7 +2,7 @@
 % Please edit documentation in R/evaluate_likelihood.R
 \name{llik_inarma_negbin}
 \alias{llik_inarma_negbin}
-\title{Evaluating the likelihood in the negative binomial case
+\title{Evaluating the likelihood in the negative binomial INARMA(1,1) model
 A wrapper around llik_inarma0_tv}
 \usage{
 llik_inarma_negbin(
@@ -37,6 +37,6 @@ the \eqn{\kappa \bullet X_t}}
 \item{log}{should log-likelihood rather than likelihood be returned?}
 }
 \description{
-Evaluating the likelihood in the negative binomial case
+Evaluating the likelihood in the negative binomial INARMA(1,1) model
 A wrapper around llik_inarma0_tv
 }

@@ -7,6 +7,7 @@
 fit_inar(
   observed,
   family = c("Poisson", "Hermite", "NegBin"),
+  offspring = c("binomial", "binomial-Poisson"),
   start = NULL,
   return_se = TRUE,
   control_optim = NULL
