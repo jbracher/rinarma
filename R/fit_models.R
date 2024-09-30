@@ -256,7 +256,7 @@ fit_inarma <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
   ret$coefficients_raw <- opt$par
   ret$se_raw <- ret$cov_raw <- NULL
   if(return_se){
-    to_solve <- opt$hessian + 10^-6 # add small value to diagonal to avoid numerical issues
+    to_solve <- opt$hessian + diag(10^-6, dim(opt$hessian[1])) # add small value to diagonal to avoid numerical issues
     ret$cov_raw <- solve(to_solve)
     if(any(diag(ret$cov_raw) < 0)){
       warning("Negative diagonal elements in inverse Fisher matrix - thresholding at zero. At least one estimated standard error will be zero.")

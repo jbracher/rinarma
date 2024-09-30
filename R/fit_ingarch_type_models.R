@@ -154,7 +154,7 @@ fit_ingarch <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
   ret$coefficients_raw <- opt$par
   ret$se_raw <- ret$cov_raw <- NULL
   if(return_se){
-    to_solve <- opt$hessian + 10^-6 # add small value to diagonal to avoid numerical issues
+    to_solve <- opt$hessian + diag(10^-6, dim(opt$hessian[1])) # add small value to diagonal to avoid numerical issues
     ret$cov_raw <- solve(to_solve)
     ret$se_raw <- sqrt(diag(ret$cov_raw))
     if(any(diag(ret$cov_raw) < 0)){
