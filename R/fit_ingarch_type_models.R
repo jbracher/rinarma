@@ -149,12 +149,13 @@ fit_ingarch <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
   # structure results
   ret <- list()
   ret$family <- family
+  ret$offspring <- "Poisson"
 
   # parameter estimates and standard errors:
   ret$coefficients_raw <- opt$par
   ret$se_raw <- ret$cov_raw <- NULL
   if(return_se){
-    to_solve <- opt$hessian + diag(10^-6, dim(opt$hessian[1])) # add small value to diagonal to avoid numerical issues
+    to_solve <- opt$hessian + diag(10^-6, dim(opt$hessian)[1]) # add small value to diagonal to avoid numerical issues
     ret$cov_raw <- solve(to_solve)
     ret$se_raw <- sqrt(diag(ret$cov_raw))
     if(any(diag(ret$cov_raw) < 0)){
@@ -188,6 +189,9 @@ fit_ingarch <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
       c(coefficients, vect = list(observed), return_fitted = TRUE)
     )$fitted
 
+    ret$fitted_variance <- ret$fitted_values
+    ret$lik_distr <- t(sapply(ret$fitted_values, FUN = dpois, x = 0:round(1.2 * max(observed))))
+
     ret$coefficients <- coefficients
     ret$se <- se
   }
@@ -201,6 +205,13 @@ fit_ingarch <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
     get_theta <- get_cluster_size(coefficients$psi, se$psi, family = "NegBin")
     coefficients$theta <- get_theta$theta
     se$theta <- get_theta$theta_se
+
+    ret$lik_distr <-  t(
+      sapply(
+        ret$fitted_values, FUN = function (x) {dnbinom(0:round(1.2 * max(observed)), mu = x, size = 1 / coefficients$psi)}
+        )
+      )
+    ret$fitted_variance <- ret$fitted_values * (1 + coefficients$psi)
 
     ret$coefficients <- unlist(coefficients[c("tau", "beta", "kappa", "theta", "mean_E1")])
     ret$se <- unlist(se[c("tau", "beta", "kappa", "theta", "mean_E1")])
@@ -218,6 +229,13 @@ fit_ingarch <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
     coefficients$theta <- get_theta$theta
     se$theta <- get_theta$theta_se
 
+    ret$fitted_variance <- ret$fitted_values * (1 + coefficients$psi)
+    ret$lik_distr <-  t(
+      sapply(
+        ret$fitted_values, FUN = function (x) {dherm(0:round(1.2 * max(observed)), mu = x, psi = coefficients$psi)}
+      )
+    )
+
     ret$coefficients <- unlist(coefficients[c("tau", "beta", "kappa", "theta", "mean_E1")])
     ret$se <- unlist(se[c("tau", "beta", "kappa", "theta", "mean_E1")])
     }
@@ -226,13 +244,15 @@ fit_ingarch <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
   ret$pearson_residuals <- (observed - ret$fitted_values) / sqrt(ret$fitted_values)
 
   # other:
+  ret$observed <- observed
   ret$dim <- length(ret$coefficients)
   ret$loglikelihood <- -opt$value
   ret$AIC <- 2*(-ret$loglikelihood + ret$dim)
-  ret$convergence <- (opt$convergence == 0)
+  ret$convergence <- opt$convergence
   ret$nobs <- length(observed)
   ret$optim <- opt
   ret$fitting_method <- "maximum_likelihood"
+  class(ret) <- "inarma"
 
   return(ret)
 }
@@ -344,12 +364,13 @@ fit_inarch <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
   # structure results
   ret <- list()
   ret$family <- family
+  ret$offspring <- "Poisson"
 
   # parameter estimates and standard errors:
   ret$coefficients_raw <- opt$par
   ret$se_raw <- ret$cov_raw <- NULL
   if(return_se){
-    to_solve <- opt$hessian + 10^-6 # add small value to diagonal to avoid numerical issues
+    to_solve <- opt$hessian + diag(10^-6, dim(opt$hessian)[1]) # add small value to diagonal to avoid numerical issues
     ret$cov_raw <- solve(to_solve)
     ret$se_raw <- sqrt(diag(ret$cov_raw))
     if(any(diag(ret$cov_raw) < 0)){
@@ -380,6 +401,9 @@ fit_inarch <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
       c(coefficients, beta = 0, vect = list(observed), return_fitted = TRUE)
     )$fitted
 
+    ret$lik_distr <- t(sapply(ret$fitted_values, FUN = dpois, x = 0:round(1.2 * max(observed))))
+    ret$fitted_variance <- ret$fitted_values
+
     ret$coefficients <- unlist(coefficients)
     ret$se <- unlist(se)
   }
@@ -390,6 +414,11 @@ fit_inarch <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
       llik_nbingarch,
       c(coefficients, beta = 0, vect = list(observed), return_fitted = TRUE)
     )$fitted
+
+    ret$lik_distr <- dnbinom(0:1.2 * max(observed), mu = ret$fitted_values,
+                             size = 1 / coefficients$psi)
+    ret$fitted_variance <- ret$fitted_values * (1 + coefficients$psi)
+
     get_theta <- get_cluster_size(coefficients$psi, se$psi, family = "NegBin")
     coefficients$theta <- get_theta$theta
     se$theta <- get_theta$theta_se
@@ -410,21 +439,27 @@ fit_inarch <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
     coefficients$theta <- get_theta$theta
     se$theta <- get_theta$theta_se
 
+    ret$lik_distr <- dherm(0:1.2 * max(observed), mu = ret$fitted_values,
+                           psi = coefficients$psi)
+    ret$fitted_variance <- ret$fitted_values * (1 + coefficients$psi)
+
     ret$coefficients <- unlist(coefficients[c("tau",  "kappa", "theta", "mean_E1")])
     ret$se <- unlist(se[c("tau", "kappa", "theta", "mean_E1")])
   }
 
   # compute residuals
-  ret$pearson_residuals <- (observed - ret$fitted_values) / sqrt(ret$fitted_values)
+  ret$pearson_residuals <- (observed - ret$fitted_values) / sqrt(ret$fitted_variance)
 
   # other:
+  ret$observed <- observed
   ret$dim <- length(ret$coefficients)
   ret$loglikelihood <- -opt$value
   ret$AIC <- 2*(-ret$loglikelihood + ret$dim)
-  ret$convergence <- (opt$convergence == 0)
+  ret$convergence <- opt$convergence
   ret$nobs <- length(observed)
   ret$optim <- opt
   ret$fitting_method <- "maximum_likelihood"
+  class(ret) <- "inarma"
 
   return(ret)
 }

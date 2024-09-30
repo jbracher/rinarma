@@ -256,7 +256,7 @@ fit_inarma <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
   ret$coefficients_raw <- opt$par
   ret$se_raw <- ret$cov_raw <- NULL
   if(return_se){
-    to_solve <- opt$hessian + diag(10^-6, dim(opt$hessian[1])) # add small value to diagonal to avoid numerical issues
+    to_solve <- opt$hessian + diag(10^-6, dim(opt$hessian)[1]) # add small value to diagonal to avoid numerical issues
     ret$cov_raw <- solve(to_solve)
     if(any(diag(ret$cov_raw) < 0)){
       warning("Negative diagonal elements in inverse Fisher matrix - thresholding at zero. At least one estimated standard error will be zero.")
@@ -337,7 +337,7 @@ fit_inarma <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
   ret$dim <- length(ret$coefficients)
   ret$loglikelihood <- -opt$value
   ret$AIC <- 2*(-ret$loglikelihood + ret$dim)
-  ret$convergence <- (opt$convergence == 0)
+  ret$convergence <- opt$convergence
   ret$nobs <- length(observed)
   ret$optim <- opt
   ret$fitting_method <- "maximum_likelihood"
@@ -564,7 +564,7 @@ fit_inar <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
   ret$coefficients_raw <- opt$par
   ret$se_raw <- ret$cov_raw <- NULL
   if(return_se){
-    to_solve <- opt$hessian + 10^-6 # add small value to diagonal to avoid numerical issues
+    to_solve <- opt$hessian + diag(10^-6, dim(opt$hessian)[1]) # add small value to diagonal to avoid numerical issues
     ret$cov_raw <- solve(to_solve)
     ret$se_raw <- sqrt(diag(ret$cov_raw))
   }
@@ -574,9 +574,43 @@ fit_inar <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
     list(tau = exp(ret$coefficients_raw["log_tau"]),
          kappa = exp(ret$coefficients_raw["logit_kappa"])/
            (1 + exp(ret$coefficients_raw["logit_kappa"])))
-  if(family == "NegBin") ret$coefficients$psi <- exp(ret$coefficients_raw["log_psi"])
-  if(family == "Hermite") ret$coefficients$psi <- exp(ret$coefficients_raw["logit_psi"])/(1 + exp(ret$coefficients_raw["logit_psi"]))
-  if(tau_is_time_varying) ret$coefficients$mean_E1 <- exp(ret$coefficients_raw["log_mean_E1"])
+  if (family == "Poisson") {
+    ret$fitted_values <- c(
+      observed[1],
+      ret$coefficients$tau + ret$coefficients$kappa * observed[-length(observed)]
+      )
+    ret$fitted_variance <- ret$fitted_values
+    ret$lik_distr <- t(sapply(ret$fitted_values, FUN = dpois, x = 0:round(1.2 * max(observed))))
+  }
+  if(family == "NegBin") {
+    ret$coefficients$psi <- exp(ret$coefficients_raw["log_psi"])
+    ret$fitted_values <- c(
+      observed[1],
+      ret$coefficients$tau + ret$coefficients$kappa * observed[-length(observed)]
+    )
+    ret$fitted_variance <- ret$fitted_values * (1 + ret$coefficients$psi)
+    ret$lik_distr <- t(
+      sapply(
+        ret$fitted_values,
+        FUN = function (x) {dnbinom(0:round(1.2 * max(observed)), mu = x, size = 1 / ret$coefficients$psi)}
+      )
+    )
+  }
+  if(family == "Hermite") {
+    ret$coefficients$psi <- exp(ret$coefficients_raw["logit_psi"])/(1 + exp(ret$coefficients_raw["logit_psi"]))
+    ret$fitted_values <- c(
+      observed[1],
+      ret$coefficients$tau + ret$coefficients$kappa * observed[-length(observed)]
+    )
+    ret$fitted_variance <- ret$fitted_values * (1 + ret$coefficients$psi)
+    ret$lik_distr <- t(
+      sapply(
+        ret$fitted_values,
+        FUN = function (x) {dherm(0:round(1.2 * max(observed)), mu = x, psi = ret$coefficients$psi)}
+      )
+    )
+  }
+    if(tau_is_time_varying) ret$coefficients$mean_E1 <- exp(ret$coefficients_raw["log_mean_E1"])
   # turn into vector:
   names_coefficients <- names(ret$coefficients)
   ret$coefficients <- unlist(ret$coefficients)
@@ -590,7 +624,7 @@ fit_inar <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
   ret$dim <- length(ret$coefficients)
   ret$loglikelihood <- -opt$value
   ret$AIC <- 2*(-ret$loglikelihood + ret$dim)
-  ret$convergence <- (opt$convergence == 0)
+  ret$convergence <- opt$convergence
   ret$nobs <- length(observed)
   ret$optim <- opt
   ret$fitting_method <- "maximum_likelihood"

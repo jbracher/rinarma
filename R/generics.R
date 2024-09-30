@@ -3,7 +3,26 @@
 #' @param model the model fit (an object of class `"inarma"`).
 #' @export
 summary.inarma <- function(model){
-  cat("Summarizing an INARMA(1, 1) model with family =", model$family, "\n \n")
+
+  # Change the message according to a model
+  if (model$offspring == "Poisson") {
+    if (is.na(model$coefficients["beta"]) && is.na(model$coefficients["phi"])) {
+      cat("Summarizing an INARCH(1) model with family =", model$family,
+          "\n \n")
+    } else {
+      cat("Summarizing an INGARCH(1, 1) model with family =", model$family,
+          "\n \n")
+    }
+  } else if (model$offspring %in% c("binomial", "binomial-Poisson")) {
+    if (is.na(model$coefficients["beta"]) && is.na(model$coefficients["phi"])) {
+      cat("Summarizing an INAR(1) model with family =", model$family,
+          "and offspring =", model$offspring, "\n \n")
+    } else {
+      cat("Summarizing an INARMA(1, 1) model with family =", model$family,
+          "and offspring =", model$offspring, "\n \n")
+    }
+  }
+
   cat("Estimated model parameters:\n")
   print(model$coefficients)
   cat("\n")

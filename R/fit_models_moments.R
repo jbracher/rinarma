@@ -250,6 +250,8 @@ fit_inar_moments <- function(observed, family = c("Poisson", "Hermite", "NegBin"
   }
 
   ret <- list()
+  ret$family <- family
+  ret$offspring <- "binomial"
   ret$coefficients <- unlist(coefficients)
   ret$coefficients_uncorrected <- coefficients_uncorrected
   ret$observed <- observed
