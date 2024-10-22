@@ -162,7 +162,9 @@ fit_inarma <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
     }
 
     phi <- exp(pars["logit_phi"])/(1 + exp(pars["logit_phi"]))
+    if (is.infinite(exp(pars["logit_phi"]))) phi <- 1
     kappa <- exp(pars["logit_kappa"])/(1 + exp(pars["logit_kappa"]))
+    if (is.infinite(exp(pars["logit_kappa"]))) kappa <- 1
     zeta <- exp(pars["logit_zeta"]) /
       (1 + exp(pars["logit_zeta"]))
 
