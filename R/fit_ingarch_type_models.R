@@ -192,7 +192,7 @@ fit_ingarch <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
     ret$fitted_variance <- ret$fitted_values
     ret$lik_distr <- t(sapply(ret$fitted_values, FUN = dpois, x = 0:round(1.2 * max(observed))))
 
-    ret$coefficients <- coefficients
+    ret$coefficients <- unlist(coefficients)
     ret$se <- se
   }
   if(family == "NegBin") {
