@@ -245,11 +245,8 @@ get_ses_orig <- function (pars, hessian_transformed) {
   }
 
   ret <- c(tau_se, kappa_se, beta_se)
-<<<<<<< HEAD
+
   if (anyNA(ret) || any(ret < 0)) {
-=======
-  if (any(ret < 0)) {
->>>>>>> 489f96d94a44c58ecff86d4a96f511195a7ffb3c
     ret[which(ret < 0)] <- 0
     warning("At least one standard error will be zero.")
   }

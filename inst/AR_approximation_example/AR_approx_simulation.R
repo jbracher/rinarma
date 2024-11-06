@@ -35,7 +35,6 @@ for (lgt in vals_lgt) {  # Loop over the series lengths
                         "kappa2_se", "beta_se")
   conv_21 <- rep(NA, n_sim)
   sims <- matrix(NA, nrow = n_sim, ncol = lgt)
-  hessians <- vector("list", n_sim)
 
   for (k in 1:n_sim) {
 
