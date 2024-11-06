@@ -196,7 +196,7 @@ delta_method_for_pairs <- function (pair, cov_raw_part) {
       exp(pair[1]) * exp(pair[2]) / ((1 + exp(pair[1]))^2 * (1 + exp(pair[2]))),
       exp(pair[1]) * exp(pair[2]) / ((1 + exp(pair[1])) * (1 + exp(pair[2]))^2),
       exp(pair[1]) / ((1 + exp(pair[1]))^2 * (1 + exp(pair[2]))),
-      exp(pair[1]) * exp(pair[2]) / ((1 + exp(pair[1])) * (1 + exp(pair[2])))
+      -exp(pair[1]) * exp(pair[2]) / ((1 + exp(pair[1])) * (1 + exp(pair[2]))^2)
     )
   )
   # Do the delta method and return
@@ -216,7 +216,7 @@ delta_method_for_pairs <- function (pair, cov_raw_part) {
 ##  the original scale
 get_ses_orig <- function (pars, hessian_transformed) {
 
-  # add small value to diagonal to avoid numerical issues
+  # add small value to the diagonal to avoid numerical issues
   to_solve <- -( hessian_transformed + diag(10^-6, dim(hessian_transformed)[1]))
   cov_raw <- solve(to_solve)
 
@@ -243,7 +243,14 @@ get_ses_orig <- function (pars, hessian_transformed) {
   } else {  # beta is 2D
     beta_se <- delta_method_for_pairs(transformed_beta, cov_raw[where_beta, where_beta])
   }
-  return(c(tau_se, kappa_se, beta_se))
+
+  ret <- c(tau_se, kappa_se, beta_se)
+  if (anyNA(ret) || any(ret < 0)) {
+    ret[which(ret < 0)] <- 0
+    warning("At least one standard error will be zero.")
+  }
+
+  return(ret)
 }
 
 ########################
