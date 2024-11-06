@@ -9,16 +9,16 @@ source("inst/AR_approximation_example/AR_approximation_functions.R")  # Load the
 # Setup ------------------------------------------------------------------------
 
 # Set the parameter values
-# s <- 1
-# kappa <- c(0.2, 0.6)
-# beta <- 0.15
-# tau <- 2
+s <- 1
+kappa <- c(0.2, 0.6)
+beta <- 0.15
+tau <- 2
 
 # Alternative set of parameters
-s <- 2
-kappa <- c(0.45, 0.25)
-beta <- 0.35
-tau <- 1.5
+# s <- 2
+# kappa <- c(0.45, 0.25)
+# beta <- 0.35
+# tau <- 1.5
 
 lag_max <- 10  # The maximum lag of the approximating AR model
 vals_lgt <- c(250, 500, 1000)
@@ -30,10 +30,12 @@ n_sim <- 1000  # Number of iterations
 for (lgt in vals_lgt) {  # Loop over the series lengths
 
   # Allocate the result containers
-  res_21 <- matrix(NA, nrow = n_sim, ncol = 4)
-  colnames(res_21) <- c("tau", "kappa1", "kappa2", "beta")
+  res_21 <- matrix(NA, nrow = n_sim, ncol = 8)
+  colnames(res_21) <- c("tau", "kappa1", "kappa2", "beta", "tau_se", "kappa1_se",
+                        "kappa2_se", "beta_se")
   conv_21 <- rep(NA, n_sim)
   sims <- matrix(NA, nrow = n_sim, ncol = lgt)
+  hessians <- vector("list", n_sim)
 
   for (k in 1:n_sim) {
 
@@ -51,6 +53,7 @@ for (lgt in vals_lgt) {  # Loop over the series lengths
       ),
       fn = llik_ar_based_higher,
       X = sim$X,
+      hessian = TRUE,
       control = list(fnscale = -1)  # To change to maximization
     )
 
@@ -60,9 +63,11 @@ for (lgt in vals_lgt) {  # Loop over the series lengths
       kappa = unname(unconstrained_par_to_orig(op$par[2:3])),
       beta = unname(exp(op$par["logit_beta"]) / (1 + exp(op$par["logit_beta"])))
     )
+    ses <- get_ses_orig(op$par, op$hessian)
 
     # Save the results
-    res_21[k, ] <- coeffs
+    res_21[k, 1:4] <- coeffs
+    res_21[k, 5:8] <- ses
     conv_21[k] <- op$convergence
     sims[k, ] <- sim$X
   }

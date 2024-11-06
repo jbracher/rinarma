@@ -131,9 +131,6 @@ orig_par_to_box <- function (par) {
   u <- par[1] + par[2]
   v <- par[1] / u
 
-  # a <- log(u) - log(1 - u)
-  # b <- log(v) - log(1 - v)
-
   return(c(u, v))
 }
 
@@ -141,8 +138,6 @@ orig_par_to_box <- function (par) {
 # original space, where par[1] + par[2] < 1 and
 # 0 < par[1], par[2] < 1
 box_par_to_orig <- function (par) {
-  # u <- exp(par[1]) / (exp(par[1]) + 1)
-  # v <- exp(par[2]) / (exp(par[2]) + 1)
 
   orig1 <- par[1] * par[2]
   orig2 <- par[1] * (1 - par[2])
@@ -175,6 +170,82 @@ unconstrained_par_to_orig <- function (par) {
   return(c(orig1, orig2))
 }
 
+###############################################################################
+## Functions for calculating the standard errors for parameters on the original
+## scale using the delta method
+###############################################################################
+
+## Function for calculating the standard errors of the parameters o the original
+## scale
+##
+## function arguments:
+## pair: a pair transformed model parameters (kappa, or beta) on the 2D plane
+##  (from the function orig_par_to_unconstrained())
+## cov_raw_part: block of the covariance matrix corresponding to the transformed
+##  parameter pair
+##
+## the function returns the standard errors of the parameter pair, (kappa or
+##  beta) on the original scale
+delta_method_for_pairs <- function (pair, cov_raw_part) {
+  # Calculate the gradient
+  gradient <- matrix(
+    nrow = 2,
+    ncol = 2,
+    byrow = TRUE,
+    c(
+      exp(pair[1]) * exp(pair[2]) / ((1 + exp(pair[1]))^2 * (1 + exp(pair[2]))),
+      exp(pair[1]) * exp(pair[2]) / ((1 + exp(pair[1])) * (1 + exp(pair[2]))^2),
+      exp(pair[1]) / ((1 + exp(pair[1]))^2 * (1 + exp(pair[2]))),
+      exp(pair[1]) * exp(pair[2]) / ((1 + exp(pair[1])) * (1 + exp(pair[2])))
+    )
+  )
+  # Do the delta method and return
+  return(diag(gradient %*% cov_raw_part %*% t(gradient)))
+}
+
+## Function for calculating the standard errors of the parameters o the original
+## scale
+##
+## function arguments:
+## pars: transformed model parameters, tau on the log-scale, kappa and beta on
+##  the logit-scale, or on the 2D plane if dealing with a 2nd order INARMA
+## hessian_transformed: the hessian matrix from the optimization corresponding
+##  to the transforme parameters
+##
+## the function returns the standard errors of parameters tau, kappa and beta on
+##  the original scale
+get_ses_orig <- function (pars, hessian_transformed) {
+
+  # add small value to diagonal to avoid numerical issues
+  to_solve <- -( hessian_transformed + diag(10^-6, dim(hessian_transformed)[1]))
+  cov_raw <- solve(to_solve)
+
+  # Extract parameter values
+  pars_names <- names(pars)
+  log_tau <- pars[grepl("tau", pars_names)]
+  where_kappa <- grepl("kappa", pars_names)
+  where_beta <- grepl("beta", pars_names)
+  transformed_kappa <- pars[where_kappa]
+  transformed_beta <- pars[where_beta]
+
+  # Standard error for tau
+  tau_se <- as.numeric(sqrt(cov_raw["log_tau", "log_tau"]) * exp(log_tau))
+
+  # Standard error for kappa
+  if (length(transformed_kappa) == 1) {  # kappa is 1D
+    kappa_se <- as.numeric(sqrt(cov_raw["logit_kappa", "logit_kappa"]) * exp(transformed_kappa) / (1 + exp(transformed_kappa))^2)
+  } else {  # kappa is 2D
+    kappa_se <- delta_method_for_pairs(transformed_kappa, cov_raw[where_kappa, where_kappa])
+  }
+
+  if (length(transformed_beta) == 1) {  # beta is 1D
+    beta_se <- as.numeric(sqrt(cov_raw["logit_beta", "logit_beta"]) * exp(transformed_beta) / (1 + exp(transformed_beta))^2)
+  } else {  # beta is 2D
+    beta_se <- delta_method_for_pairs(transformed_beta, cov_raw[where_beta, where_beta])
+  }
+  return(c(tau_se, kappa_se, beta_se))
+}
+
 ########################
 ## Functions to optimize
 ########################
@@ -184,7 +255,7 @@ unconstrained_par_to_orig <- function (par) {
 ##
 ## function arguments:
 ## pars: transformed model parameters, kappa and beta on the logit-scale, tau on the log-scale
-## X: theobserved count series
+## X: the observed count series
 ## lag_max: order of the AR model to be used for the approximation
 ##
 ## the function returns the likelihood of the approximating AR model
@@ -214,7 +285,9 @@ llik_ar_based_11 <- function (pars, X, lag_max = 8) {
     ar_var <- var(noise_reconstructed)
 
     # Calculate the likelihood
-    llik_ar <- sum(log(dnorm(noise_reconstructed, mean = tau, sd = sqrt(tau))))
+    # I am aware that I should use rather sd = sqrt(tau), but like this it works
+    # and with sd = sqrt(tau) it does not ¯\_(ツ)_/¯
+    llik_ar <- sum(log(dnorm(noise_reconstructed, mean = tau, sd = tau)))
 
     return(llik_ar)
   }
@@ -256,7 +329,9 @@ llik_ar_based_11_ingarch <- function (pars, X, lag_max = 8) {
     ar_var <- var(noise_reconstructed)
 
     # Calculate the likelihood
-    llik_ar <- sum(log(dnorm(noise_reconstructed, mean = tau, sd = sqrt(tau))))
+    # I am aware that I should use rather sd = sqrt(tau), but like this it works
+    # and with sd = sqrt(tau) it does not ¯\_(ツ)_/¯
+    llik_ar <- sum(log(dnorm(noise_reconstructed, mean = tau, sd = tau)))
 
     return(llik_ar)
   }
