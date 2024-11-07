@@ -292,10 +292,14 @@ llik_ar_based_11 <- function (pars, X, lag_max = 8) {
     ar_mean <- mean(noise_reconstructed)
     ar_var <- var(noise_reconstructed)
 
+    # Calculate the parameters of the white noise
+    wn_mean <- tau * (1 - sum(ar_coeffs)) / (1 - sum(kappa))
+    wn_var <- wn_mean - sum(ar_coeffs * acf_inarma[-1])
+
     # Calculate the likelihood
-    # I am aware that I should use rather sd = sqrt(tau), but like this it works
-    # and with sd = sqrt(tau) it does not ¯\_(ツ)_/¯
-    llik_ar <- sum(log(dnorm(noise_reconstructed, mean = tau, sd = tau)))
+    # This should be correct in terms of matching the moments, but when I used
+    # mean = tau, sd = tau, we got the best results ¯\_(ツ)_/¯
+    llik_ar <- sum(log(dnorm(noise_reconstructed, mean = wn_mean, sd = wn_var)))
 
     return(llik_ar)
   }
@@ -336,10 +340,14 @@ llik_ar_based_11_ingarch <- function (pars, X, lag_max = 8) {
     ar_mean <- mean(noise_reconstructed)
     ar_var <- var(noise_reconstructed)
 
+    # Calculate the parameters of the white noise
+    wn_mean <- tau * (1 - sum(ar_coeffs)) / (1 - sum(kappa))
+    wn_var <- wn_mean - sum(ar_coeffs * acf_inarma[-1])
+
     # Calculate the likelihood
-    # I am aware that I should use rather sd = sqrt(tau), but like this it works
-    # and with sd = sqrt(tau) it does not ¯\_(ツ)_/¯
-    llik_ar <- sum(log(dnorm(noise_reconstructed, mean = tau, sd = tau)))
+    # This should be correct in terms of matching the moments, but when I used
+    # mean = tau, sd = tau, we got the best results ¯\_(ツ)_/¯
+    llik_ar <- sum(log(dnorm(noise_reconstructed, mean = wn_mean, sd = wn_var)))
 
     return(llik_ar)
   }
@@ -393,10 +401,14 @@ llik_ar_based_higher <- function (pars, X, return_tau_hat = FALSE, lag_max = 10)
     ar_mean <- mean(noise_reconstructed)
     ar_var <- var(noise_reconstructed)
 
+    # Calculate the parameters of the white noise
+    wn_mean <- tau * (1 - sum(ar_coeffs)) / (1 - sum(kappa))
+    wn_var <- wn_mean - sum(ar_coeffs * acf_inarma[-1])
+
     # Calculate the likelihood
-    # I am aware that I should use rather sd = sqrt(tau), but like this it works
-    # and with sd = sqrt(tau) it does not ¯\_(ツ)_/¯
-    llik_ar <- sum(log(dnorm(noise_reconstructed, mean = tau, sd = tau)))
+    # This should be correct in terms of matching the moments, but when I used
+    # mean = tau, sd = tau, we got the best results ¯\_(ツ)_/¯
+    llik_ar <- sum(log(dnorm(noise_reconstructed, mean = wn_mean, sd = wn_var)))
 
     return(llik_ar)
   }
@@ -450,10 +462,14 @@ llik_ar_based_higher_ingarch <- function (pars, X, return_tau_hat = FALSE, lag_m
     ar_mean <- mean(noise_reconstructed)
     ar_var <- var(noise_reconstructed)
 
+    # Calculate the parameters of the white noise
+    wn_mean <- tau * (1 - sum(ar_coeffs)) / (1 - sum(kappa))
+    wn_var <- wn_mean - sum(ar_coeffs * acf_inarma[-1])
+
     # Calculate the likelihood
-    # I am aware that I should use rather sd = sqrt(tau), but like this it works
-    # and with sd = sqrt(tau) it does not ¯\_(ツ)_/¯
-    llik_ar <- sum(log(dnorm(noise_reconstructed, mean = tau, sd = tau)))
+    # This should be correct in terms of matching the moments, but when I used
+    # mean = tau, sd = tau, we got the best results ¯\_(ツ)_/¯
+    llik_ar <- sum(log(dnorm(noise_reconstructed, mean = wn_mean, sd = wn_var)))
 
     return(llik_ar)
   }

@@ -53,11 +53,21 @@ for (s in 1:3) {  # Loop over the scenarios
       apply(res[good, c("tau", "beta", "kappa")], 2, sd)
     scenario_temp[as.character(lgt), c("est_se_tau", "est_se_beta", "est_se_kappa")] <-
       apply(res[good, c("tau_se", "beta_se", "kappa_se")], 2, mean)
+
+    scenario_temp[, "T"] <- vals_lgt
   }
+
+  # Format the results
+  to_print <- scenario_temp
+  to_print[, 3:13] <- round(scenario_temp[, 3:13], digits = 3)
+  to_print <- apply(to_print, 2, as.character)
+  to_print[, 4:13] <- apply(to_print[, 4:13], 2, str_pad, pad = "0", width = 5, side = "right")
+  to_print[1, "tau"] <- "1.000"
+  to_print[2:3, c("tau", "kappa", "beta")] <- ""
 
   write(
     print(
-      xtable(scenario_temp, digits=c(0, 0, rep(3, ncol(scenario_temp) - 1))),
+      xtable(to_print),
       only.contents = TRUE,
       include.rownames = FALSE, include.colnames = FALSE,
       hline.after = NULL),

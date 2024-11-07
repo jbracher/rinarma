@@ -3,6 +3,8 @@ library(xtable)
 
 # Setup ------------------------------------------------------------------------
 
+n_sim <- 1000  # Number of simulations
+
 # Set the parameter values
 s <- 1
 kappa <- c(0.2, 0.6)
@@ -64,9 +66,17 @@ for (lgt in vals_lgt) {
     apply(res[good, c("tau_se", "beta_se", "kappa1_se", "kappa2_se")], 2, mean)
 }
 
+# Format the results
+to_print <- scenario_temp
+to_print[, 3:17] <- round(scenario_temp[, 3:17], digits = 3)
+to_print <- apply(to_print, 2, as.character)
+to_print[, 4:17] <- apply(to_print[, 4:17], 2, str_pad, pad = "0", width = 5, side = "right")
+to_print[1, "tau"] <- ifelse(s == 1, "2.000", "1.500")
+to_print[2:3, c("tau", "kappa1", "kappa2", "beta")] <- ""
+
 write(
   print(
-    xtable(scenario_temp, digits=c(0, 0, rep(3, ncol(scenario_temp) - 1))),
+    xtable(to_print),
         only.contents = TRUE,
         include.rownames = FALSE, include.colnames = FALSE,
         hline.after = NULL),

@@ -84,6 +84,6 @@ for (s in 1:3) {  # Loop over the scenarios
     sim_tab <- as_tibble(sims)
 
     # Write the results
-    write_csv(results_tab, file = paste0("inst/AR_approximation_example/Results/AR_INARMA11_s", s, "_lgt", lgt, "_sqrt.csv"))
+    write_csv(results_tab, file = paste0("inst/AR_approximation_example/Results/AR_INARMA11_s", s, "_lgt", lgt, ".csv"))
   }
 }
