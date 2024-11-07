@@ -141,6 +141,8 @@ fit_inarma_moments <- function(observed, family = c("Poisson", "Hermite", "NegBi
   ret$observed <- observed
   ret$nobs <- length(observed)
   ret$fitting_method <- "moments"
+  ret$offspring <- "binomial"
+  ret$family <- family
 
   # adapt nomenclature to paper Bracher and Sobolova (2024)
   if(parameterization == "beta"){
