@@ -38,10 +38,13 @@ scenario_temp[, "tau"] <- tau
 
 for (lgt in vals_lgt) {
 
+  # Load the results
   res <- read_csv(
     file = paste0("inst/AR_approximation_example/Results/AR_INARMA21_s", s,
                   "_lgt", lgt, ".csv")
     )
+
+  # Find problematic rows
   divergent <- which(res$convergence != 0)
   other_problems <- which(is.na(res[, 1:8]) | res[, 1:8] <= 0, arr.ind = TRUE)[, 1]
   problematic <- unique(c(divergent, other_problems))
@@ -49,12 +52,16 @@ for (lgt in vals_lgt) {
   print(paste0("For length ", lgt, " there were ", length(problematic),
                " problematic optimizations. Selecting only the convergent ones."))
 
+  # Select only the good rows
+  good <- setdiff(1:n_sim, problematic)
+
+  # Aggregate
   scenario_temp[as.character(lgt), c("mean_tau", "mean_beta", "mean_kappa1", "mean_kappa2")] <-
-    apply(res[-problematic, c("tau", "beta", "kappa1", "kappa2")], 2, mean)
+    apply(res[good, c("tau", "beta", "kappa1", "kappa2")], 2, mean)
   scenario_temp[as.character(lgt), c("se_tau", "se_beta", "se_kappa1", "se_kappa2")] <-
-    apply(res[-problematic, c("tau", "beta", "kappa1", "kappa2")], 2, sd)
+    apply(res[good, c("tau", "beta", "kappa1", "kappa2")], 2, sd)
   scenario_temp[as.character(lgt), c("est_se_tau", "est_se_beta", "est_se_kappa1", "est_se_kappa2")] <-
-    apply(res[-problematic, c("tau_se", "beta_se", "kappa1_se", "kappa2_se")], 2, mean, na.rm = TRUE)
+    apply(res[good, c("tau_se", "beta_se", "kappa1_se", "kappa2_se")], 2, mean)
 }
 
 write(
