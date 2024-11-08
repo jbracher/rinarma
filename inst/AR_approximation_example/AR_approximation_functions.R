@@ -233,7 +233,7 @@ delta_method_for_pairs <- function (pair, cov_raw_part) {
     )
   )
   # Do the delta method and return
-  return(diag(gradient %*% cov_raw_part %*% t(gradient)))
+  return(sqrt(diag(gradient %*% cov_raw_part %*% t(gradient))))
 }
 
 ## Function for calculating the standard errors of the parameters o the original
