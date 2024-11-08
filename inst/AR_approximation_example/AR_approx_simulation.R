@@ -9,16 +9,16 @@ source("inst/AR_approximation_example/AR_approximation_functions.R")  # Load the
 # Setup ------------------------------------------------------------------------
 
 # Set the parameter values
-s <- 1
-kappa <- c(0.2, 0.6)
-beta <- 0.15
-tau <- 2
+# s <- 1
+# kappa <- c(0.2, 0.6)
+# beta <- 0.15
+# tau <- 2
 
 # Alternative set of parameters
-# s <- 2
-# kappa <- c(0.45, 0.25)
-# beta <- 0.35
-# tau <- 1.5
+s <- 2
+kappa <- c(0.45, 0.25)
+beta <- 0.35
+tau <- 1.5
 
 lag_max <- 10  # The maximum lag of the approximating AR model
 vals_lgt <- c(250, 500, 1000)
@@ -53,7 +53,7 @@ for (lgt in vals_lgt) {  # Loop over the series lengths
       fn = llik_ar_based_higher,
       X = sim$X,
       hessian = TRUE,
-      control = list(fnscale = -1)  # To change to maximization
+      control = list(fnscale = -1, maxit = 800)  # To change to maximization
     )
 
     # Extract and transform the results

@@ -45,13 +45,6 @@ for (s in 1:3) {  # Loop over the scenarios
                         offspring = "binomial", family = "Poisson")
 
       # Get the starting value for the optimization
-      # start <- fit_inarma_moments(sim$X, family = "Poisson")$coefficients
-      # start_transformed <- c(
-      #   log_tau = unname(log(start["tau"])),
-      #   logit_beta = unname(log(start["beta"] / (1 - start["beta"]))),
-      #   logit_kappa = unname(log(start["kappa"] / (1 - start["kappa"])))
-      #   )
-      # start_transformed[is.infinite(start_transformed)] <- 0
       start_transformed <- c(log_tau = 1, logit_kappa = 0, logit_beta = 0)
 
       # Find the (approximate) maximum likelihood estimates

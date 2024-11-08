@@ -20,6 +20,7 @@ library(tscount)
 sim_inarmapq <- function(tau, beta, kappa, E0, burn_in = 100, t_max = 1e4,
                          thinnings = FALSE) {
 
+  # Check the validity of coefficients
   if (sum(beta) >= 1) {
     stop("sum of betas must be less than 1.")
   }
@@ -35,33 +36,39 @@ sim_inarmapq <- function(tau, beta, kappa, E0, burn_in = 100, t_max = 1e4,
     stop("Length of 'E0' must be the length of the parameter vector 'beta'.")
   }
 
+  # Generate the innovations
   I <- rpois(t_max + burn_in + max_order, tau)
 
+  # Pad the parameter vectors so that they are of the same length
   beta_vec <- c(beta, rep(0, max_order - q), 1 - sum(beta))
   kappa_vec <- c(kappa, rep(0, max_order - p), 1 - sum(kappa))
 
+  # Allocate the containers
   E <- X <- integer(t_max + burn_in + max_order)
   E_thin <- matrix(nrow = t_max + burn_in + max_order, ncol = max_order + 1)
   X_thin <- E_thin
   L <- integer(q + 1)
   C <- integer(p + 1)
 
+  # Initialize
   E[1:q] <- E0
 
   for (k in 1:(t_max + burn_in + max_order)) {
 
+    # Do the MA thinning and update the processes
     L <- rmultinom(1, E[k], beta_vec)[, 1]
     E_thin[k, ] <- L
     E[k + 1:q] <- E[k + 1:q] + L[1:q]
     X[k] <- L[max_order + 1] + I[k]
 
+    # Do the AR thinning and update the processes
     C <- rmultinom(1, X[k], kappa_vec)[, 1]
     X_thin[k, ] <- C
     E[k + 1:p] <- E[k + 1:p] + C[1:p]
   }
 
   ret_list <- list(E = E[1:t_max + burn_in], X = X[1:t_max + burn_in])
-  if (thinnings) {
+  if (thinnings) {  # Add the individual thinning steps into the returns
     ret_list$E_thin <- E_thin[1:t_max + burn_in, ]
     ret_list$X_thin <- X_thin[1:t_max + burn_in, ]
   }
@@ -112,6 +119,32 @@ acf_exact <- function(max_d, beta, kappa) {
 acf_exact_ingarch <- function(max_d, beta, kappa, tau) {
   true_cor <- ingarch.acf(tau * (1 - sum(beta)), past_obs = kappa * (1 - sum(beta)),
                           lag.max = max_d, past_mean = beta, plot = FALSE)
+
+  return(true_cor)
+}
+
+## Function calculating the exact mean of the Poisson INGARCH(p, q) model
+## borrowing the functionality from the tscount package
+## function arguments:
+## beta, kappa, tau: model parameters in the thinning formulation
+##
+## the function returns the vector of autocorrelation values up to lag max_d
+mean_exact_ingarch <- function(beta, kappa, tau) {
+  true_cor <- ingarch.mean(tau * (1 - sum(beta)),
+                           past_obs = kappa * (1 - sum(beta)), past_mean = beta)
+
+  return(true_cor)
+}
+
+## Function calculating the exact variance of the Poisson INGARCH(p, q) model
+## borrowing the functionality from the tscount package
+## function arguments:
+## beta, kappa, tau: model parameters in the thinning formulation
+##
+## the function returns the vector of autocorrelation values up to lag max_d
+var_exact_ingarch <- function(beta, kappa, tau) {
+  true_cor <- ingarch.var(tau * (1 - sum(beta)),
+                           past_obs = kappa * (1 - sum(beta)), past_mean = beta)
 
   return(true_cor)
 }
@@ -274,7 +307,7 @@ llik_ar_based_11 <- function (pars, X, lag_max = 8) {
   kappa <- exp(pars["logit_kappa"]) / (1 + exp(pars["logit_kappa"]))
   beta <- exp(pars["logit_beta"]) / (1 + exp(pars["logit_beta"]))
 
-  # Calculate the exact autocorelation
+  # Calculate the exact autocorrelation
   acf_inarma <- acf_exact(lag_max, beta = beta, kappa = kappa)
 
   # Solve the Yule-Walker equations
@@ -289,24 +322,21 @@ llik_ar_based_11 <- function (pars, X, lag_max = 8) {
     # Reconstruct the noise
     lagged_obs_matrix <- sapply(0:(lag_max - 1), lag, x = X)[-(1:(lag_max - 1)), ]
     noise_reconstructed <- X[-(1:lag_max)] - lagged_obs_matrix[-nrow(lagged_obs_matrix), ] %*% ar_coeffs
-    ar_mean <- mean(noise_reconstructed)
-    ar_var <- var(noise_reconstructed)
 
-    # Calculate the parameters of the white noise
-    wn_mean <- tau * (1 - sum(ar_coeffs)) / (1 - sum(kappa))
-    wn_var <- wn_mean - sum(ar_coeffs * acf_inarma[-1])
+    # Calculate the parameters of the white noise by matching the mean and
+    # variance of the INARMA and AR models
+    wn_mean <- tau * (1 - sum(ar_coeffs)) / (1 - kappa)
+    wn_var <- tau * (1 -  sum(ar_coeffs * acf_inarma[-1])) / (1 - sum(kappa))
 
     # Calculate the likelihood
-    # This should be correct in terms of matching the moments, but when I used
-    # mean = tau, sd = tau, we got the best results ¯\_(ツ)_/¯
-    llik_ar <- sum(log(dnorm(noise_reconstructed, mean = wn_mean, sd = wn_var)))
+    llik_ar <- sum(log(dnorm(noise_reconstructed, mean = wn_mean, sd = sqrt(wn_var))))
 
     return(llik_ar)
   }
 }
 
 ## Function for evaluating the likelihood of an AR model approximating the
-## INGARCH(1, 1) model
+## INGARCH(p, q) model for p, q <= 2
 ##
 ## function arguments:
 ## pars: transformed model parameters (from the thinning formulation),
@@ -315,14 +345,32 @@ llik_ar_based_11 <- function (pars, X, lag_max = 8) {
 ## lag_max: order of the AR model to be used for the approximation
 ##
 ## the function returns the likelihood of the approximating AR model
-llik_ar_based_11_ingarch <- function (pars, X, lag_max = 8) {
+llik_ar_based_ingarch <- function (pars, X, lag_max = 8) {
 
   # Extract parameter values
-  tau <- exp(pars["log_tau"])
-  kappa <- exp(pars["logit_kappa"]) / (1 + exp(pars["logit_kappa"]))
-  beta <- exp(pars["logit_beta"]) / (1 + exp(pars["logit_beta"]))
+  pars_names <- names(pars)
+  transformed_kappa <- pars[grepl("kappa", pars_names)]
+  transformed_beta <- pars[grepl("beta", pars_names)]
 
-  # Calculate the exact autocorelation
+  tau <- exp(pars[grepl("tau", pars_names)])
+
+  # If kappa is one-dimensional, do the logit transformation, if 2-dimensional,
+  # map it to the real plane (unconstrained space).
+  if (length(transformed_kappa) == 1) {
+    kappa <- exp(transformed_kappa) / (1 + exp(transformed_kappa))
+  } else {
+    kappa <- unconstrained_par_to_orig(transformed_kappa)
+  }
+
+  # If beta is one-dimensional, do the logit transformation, if 2-dimensional,
+  # map it to the real plane (unconstrained space).
+  if (length(transformed_beta) == 1) {
+    beta <- exp(transformed_beta) / (1 + exp(transformed_beta))
+  } else {
+    beta <- unconstrained_par_to_orig(transformed_beta)
+  }
+
+  # Calculate the exact autocorrelation
   acf_inarma <- acf_exact_ingarch(lag_max, beta = beta, kappa = kappa, tau = tau)
 
   # Solve the Yule-Walker equations
@@ -341,13 +389,11 @@ llik_ar_based_11_ingarch <- function (pars, X, lag_max = 8) {
     ar_var <- var(noise_reconstructed)
 
     # Calculate the parameters of the white noise
-    wn_mean <- tau * (1 - sum(ar_coeffs)) / (1 - sum(kappa))
-    wn_var <- wn_mean - sum(ar_coeffs * acf_inarma[-1])
+    wn_mean <- mean_exact_ingarch(beta, kappa, tau) * (1 - sum(ar_coeffs))
+    wn_var <- var_exact_ingarch(beta, kappa, tau)  * (1 -  sum(ar_coeffs * acf_inarma[-1]))
 
     # Calculate the likelihood
-    # This should be correct in terms of matching the moments, but when I used
-    # mean = tau, sd = tau, we got the best results ¯\_(ツ)_/¯
-    llik_ar <- sum(log(dnorm(noise_reconstructed, mean = wn_mean, sd = wn_var)))
+    llik_ar <- sum(log(dnorm(noise_reconstructed, mean = wn_mean, sd = sqrt(wn_var))))
 
     return(llik_ar)
   }
@@ -381,7 +427,7 @@ llik_ar_based_higher <- function (pars, X, return_tau_hat = FALSE, lag_max = 10)
     beta <- unconstrained_par_to_orig(transformed_beta)
   }
 
-  # Calculate the exact autocorelation
+  # Calculate the exact autocorrelation
   acf_inarma <- acf_exact(lag_max, beta = beta, kappa = kappa)
 
   # Solve the Yule-Walker equations
@@ -403,73 +449,10 @@ llik_ar_based_higher <- function (pars, X, return_tau_hat = FALSE, lag_max = 10)
 
     # Calculate the parameters of the white noise
     wn_mean <- tau * (1 - sum(ar_coeffs)) / (1 - sum(kappa))
-    wn_var <- wn_mean - sum(ar_coeffs * acf_inarma[-1])
+    wn_var <- tau * (1 -  sum(ar_coeffs * acf_inarma[-1])) / (1 - sum(kappa))
 
     # Calculate the likelihood
-    # This should be correct in terms of matching the moments, but when I used
-    # mean = tau, sd = tau, we got the best results ¯\_(ツ)_/¯
-    llik_ar <- sum(log(dnorm(noise_reconstructed, mean = wn_mean, sd = wn_var)))
-
-    return(llik_ar)
-  }
-}
-
-## Function for evaluating the likelihood of an AR model approximating the
-## INGARCH(p, q) model, for p, q <= 2
-##
-## function arguments:
-## pars: transformed model parameters (thinning based formulation),
-##  kappa and beta on the unconstrained scales, tau on the log-scale
-## X: the observed count series
-## lag_max: order of the AR model to be used for the approximation
-##
-## the function returns the likelihood of the approximating AR model
-llik_ar_based_higher_ingarch <- function (pars, X, return_tau_hat = FALSE, lag_max = 10) {
-
-  # Extract parameter values
-  pars_names <- names(pars)
-  transformed_kappa <- pars[grepl("kappa", pars_names)]
-  transformed_beta <- pars[grepl("beta", pars_names)]
-
-  tau <- exp(pars[grepl("tau", pars_names)])
-  kappa <- unconstrained_par_to_orig(transformed_kappa)
-
-  # If beta is one-dimensional, do the logit transformation, if 2-dimensional,
-  # map it to the real plane (unconstrained space).
-  if (length(transformed_beta) == 1) {
-    beta <- exp(transformed_beta) / (1 + exp(transformed_beta))
-  } else {
-    beta <- unconstrained_par_to_orig(transformed_beta)
-  }
-
-  # Calculate the exact autocorelation
-  acf_inarma <- acf_exact_ingarch(lag_max, beta = beta, kappa = kappa, tau = tau)
-
-  # Solve the Yule-Walker equations
-  YW_mat <- Toeplitz(acf_inarma[-length(acf_inarma)])
-  ar_coeffs <- try(solve(YW_mat + diag(1e-6, lag_max), acf_inarma[-1]))
-
-  ret <- list()
-
-  if (class(ar_coeffs) == "try-error") {
-    # Return an infinitely low value of the likelihood, if the Y-W equations
-    # can not be solved
-    ret$llik <- -Inf
-  } else {
-    # Reconstruct the noise
-    lagged_obs_matrix <- sapply(0:(lag_max - 1), lag, x = X)[-(1:(lag_max - 1)), ]
-    noise_reconstructed <- X[-(1:lag_max)] - lagged_obs_matrix[-nrow(lagged_obs_matrix), ] %*% ar_coeffs
-    ar_mean <- mean(noise_reconstructed)
-    ar_var <- var(noise_reconstructed)
-
-    # Calculate the parameters of the white noise
-    wn_mean <- tau * (1 - sum(ar_coeffs)) / (1 - sum(kappa))
-    wn_var <- wn_mean - sum(ar_coeffs * acf_inarma[-1])
-
-    # Calculate the likelihood
-    # This should be correct in terms of matching the moments, but when I used
-    # mean = tau, sd = tau, we got the best results ¯\_(ツ)_/¯
-    llik_ar <- sum(log(dnorm(noise_reconstructed, mean = wn_mean, sd = wn_var)))
+    llik_ar <- sum(log(dnorm(noise_reconstructed, mean = wn_mean, sd = sqrt(wn_var))))
 
     return(llik_ar)
   }
