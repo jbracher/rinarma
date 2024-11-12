@@ -21,7 +21,10 @@ vals_lgt <- c(250, 500, 1000)  # lengths of simulated time series
 
 # Run the loops ----------------------------------------------------------------
 
-n_sim <- 1000  # Number of iterations
+# Set a few different starting value in case the optimization does not converge
+start_transformed <- matrix(c(1, 0, 0, 0.2, 1, 1, 0.2, -1, -1,
+                              rep(NA, 3)), nrow = 4, ncol = 3, byrow = TRUE)
+colnames(start_transformed) <- c("log_tau", "logit_kappa", "logit_beta")
 for (s in 1:3) {  # Loop over the scenarios
 
   # Grab the parameter values
@@ -44,25 +47,48 @@ for (s in 1:3) {  # Loop over the scenarios
       sim <- sim_inarma(tau = tau, kappa = kappa, beta = beta, lgt = lgt,
                         offspring = "binomial", family = "Poisson")
 
-      # Get the starting value for the optimization
-      start_transformed <- c(log_tau = 1, logit_kappa = 0, logit_beta = 0)
+      # Calculate the moment estimates and use it as a starting value for the
+      # optmization in case the previous 3 are bad
+      start <- try(fit_inarma_moments(sim$X, family = "Poisson"))
 
-      # Find the (approximate) maximum likelihood estimates
-      op <- optim(
-        par = start_transformed,
-        fn = llik_ar_based_11,
-        X = sim$X,
-        hessian = TRUE,
-        control = list(fnscale = -1)  # To change to maximization
-      )
+      if (class(start) == "try-error") {
+        start_transformed[4, ] <- c(log_tau = 0.5, logit_kappa = 0, logit_beta = 0,
+                                    logit_psi = 0)
+      } else {
+        start <- start$coefficients
+        start_transformed[4, ] <- c(
+          log_tau = unname(log(start["tau"])),
+          logit_kappa = unname(log(start["kappa"] / (1 - start["kappa"]))),
+          logit_beta = unname(log(start["beta"] / (1 - start["beta"])))
+        )
+        start_transformed[4, is.nan(start_transformed[4, ]) |
+                            is.infinite(start_transformed[4, ])] <- 0
+      }
 
-      # Extract and transform the results
-      coeffs <- c(
-        tau = unname(exp(op$par["log_tau"])),
-        kappa = unname(exp(op$par["logit_kappa"]) / (1 + exp(op$par["logit_kappa"]))),
-        beta = unname(exp(op$par["logit_beta"]) / (1 + exp(op$par["logit_beta"])))
-      )
-      ses <- get_ses_orig(op$par, op$hessian)
+      # Refit until we get a non-problematic estimate
+      refit_iter <- 1
+      refit <- TRUE
+      while (refit & refit_iter <= 4) {
+        # Find the (approximate) maximum likelihood estimates
+        op <- optim(
+          par = start_transformed[refit_iter, ],
+          fn = llik_ar_based_11,
+          X = sim$X,
+          family = "Poisson",
+          hessian = TRUE,
+          control = list(fnscale = -1, maxit = 800)  # To change to maximization
+        )
+
+        # Extract and transform the results
+        coeffs <- c(
+          tau = unname(exp(op$par["log_tau"])),
+          kappa = unname(exp(op$par["logit_kappa"]) / (1 + exp(op$par["logit_kappa"]))),
+          beta = unname(exp(op$par["logit_beta"]) / (1 + exp(op$par["logit_beta"])))
+        )
+        ses <- get_ses_orig(op$par, op$hessian, family = "Poisson")
+        refit <- anyNA(ses) | op$convergence != 0
+        refit_iter <- refit_iter + 1
+      }
 
       # Save the results
       res_11[k, 1:3] <- coeffs

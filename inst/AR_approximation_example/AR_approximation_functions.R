@@ -109,6 +109,41 @@ acf_exact <- function(max_d, beta, kappa) {
   return(true_cor)
 }
 
+## Function calculating the exact variance of the INARMA(1, 1) model
+## with Poisson, Hermite, or Negative binomial innovation distribution
+## function arguments:
+## beta, kappa, tau, sigma2_tau: model parameters
+##
+## the function returns the vector of autocorrelation values up to lag max_d
+var_exact_11 <- function (beta, kappa, tau, sigma2_tau) {
+  xi <- beta + (1 - beta) * kappa
+  mu <- tau / (1 - kappa)
+
+  true_var <- mu * kappa * (1 + beta) / (1 + xi) +
+    (1 - kappa * (1 + beta) / (1 + xi)) * sigma2_tau / (1 - kappa)
+  return(true_var)
+}
+
+## Function calculating the exact autocorrelation fun of the INARMA(1, 1) model
+## with Poisson, Hermite, or Negative binomial innovation distribution
+## function arguments:
+## max_d: the maximum lag
+## beta, kappa: model parameters
+## family: one of "Poisson", "Hermite", or "NegBin"
+##
+## the function returns the vector of autocorrelation values up to lag max_d
+acf_exact_11 <- function (max_d, beta, kappa, tau, sigma2_tau) {
+  xi <- beta + (1 - beta) * kappa
+
+  # ACF from lag 1 onwards
+  acf_true <- xi^(0:(max_d - 1)) * (1 - beta) * kappa *
+    (1 +
+       kappa * beta * (sigma2_tau - tau) /
+       ((1 + beta) * ((1 - kappa) * sigma2_tau + kappa * tau) + (1 - beta) * kappa * sigma2_tau))
+  acf_true <- c(1, acf_true)  # append 1
+  return(acf_true)
+}
+
 ## Function calculating the exact autocorrelation fun of the Poisson
 ## INGARCH(p, q) model borrowing the functionality from the tscount package
 ## function arguments:
@@ -247,7 +282,8 @@ delta_method_for_pairs <- function (pair, cov_raw_part) {
 ##
 ## the function returns the standard errors of parameters tau, kappa and beta on
 ##  the original scale
-get_ses_orig <- function (pars, hessian_transformed) {
+get_ses_orig <- function (pars, hessian_transformed,
+                          family = c("Poisson", "Hermite", "NegBin")) {
 
   # add small value to the diagonal to avoid numerical issues
   to_solve <- -( hessian_transformed + diag(10^-6, dim(hessian_transformed)[1]))
@@ -271,6 +307,7 @@ get_ses_orig <- function (pars, hessian_transformed) {
     kappa_se <- delta_method_for_pairs(transformed_kappa, cov_raw[where_kappa, where_kappa])
   }
 
+  # Standard error for beta
   if (length(transformed_beta) == 1) {  # beta is 1D
     beta_se <- as.numeric(sqrt(cov_raw["logit_beta", "logit_beta"]) * exp(transformed_beta) / (1 + exp(transformed_beta))^2)
   } else {  # beta is 2D
@@ -278,6 +315,17 @@ get_ses_orig <- function (pars, hessian_transformed) {
   }
 
   ret <- c(tau_se, kappa_se, beta_se)
+
+  # Standard error for psi if required by the distributional family
+  if (family == "Hermite") {  # Hermite family
+    transformed_psi <- pars[grepl("psi", pars_names)]
+    psi_se <- as.numeric(sqrt(cov_raw["logit_psi", "logit_psi"]) * exp(transformed_psi) / (1 + exp(transformed_psi))^2)
+    ret <- c(ret, psi_se)
+  } else if (family == "NegBin") {  # beta is 2D
+    transformed_psi <- pars[grepl("psi", pars_names)]
+    psi_se <- as.numeric(sqrt(cov_raw["log_psi", "log_psi"]) * exp(transformed_psi))
+    ret <- c(ret, psi_se)
+  }
 
   if (anyNA(ret) || any(ret < 0)) {
     ret[which(ret < 0)] <- 0
@@ -300,15 +348,26 @@ get_ses_orig <- function (pars, hessian_transformed) {
 ## lag_max: order of the AR model to be used for the approximation
 ##
 ## the function returns the likelihood of the approximating AR model
-llik_ar_based_11 <- function (pars, X, lag_max = 8) {
+llik_ar_based_11 <- function (pars, X, lag_max = 8,
+                              family = c("Poisson", "Hermite", "NegBin")) {
 
   # Extract parameter values
   tau <- exp(pars["log_tau"])
   kappa <- exp(pars["logit_kappa"]) / (1 + exp(pars["logit_kappa"]))
   beta <- exp(pars["logit_beta"]) / (1 + exp(pars["logit_beta"]))
 
+  if (family == "Poisson") {
+    psi <- 0
+  } else if (family == "Hermite") {
+    psi <- exp(pars["logit_psi"]) / (1 + exp(pars["logit_psi"]))
+  } else if (family == "NegBin") {
+    psi <- exp(pars["log_psi"])
+  }
+
+  sigma2_tau <- (1 + psi) * tau
+
   # Calculate the exact autocorrelation
-  acf_inarma <- acf_exact(lag_max, beta = beta, kappa = kappa)
+  acf_inarma <- acf_exact_11(lag_max, beta, kappa, tau, sigma2_tau)
 
   # Solve the Yule-Walker equations
   YW_mat <- Toeplitz(acf_inarma[-length(acf_inarma)])
@@ -326,7 +385,7 @@ llik_ar_based_11 <- function (pars, X, lag_max = 8) {
     # Calculate the parameters of the white noise by matching the mean and
     # variance of the INARMA and AR models
     wn_mean <- tau * (1 - sum(ar_coeffs)) / (1 - kappa)
-    wn_var <- tau * (1 -  sum(ar_coeffs * acf_inarma[-1])) / (1 - sum(kappa))
+    wn_var <- var_exact_11(beta, kappa, tau, sigma2_tau) * (1 -  sum(ar_coeffs * acf_inarma[-1]))
 
     # Calculate the likelihood
     llik_ar <- sum(log(dnorm(noise_reconstructed, mean = wn_mean, sd = sqrt(wn_var))))
