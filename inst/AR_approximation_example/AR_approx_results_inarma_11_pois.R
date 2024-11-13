@@ -30,7 +30,7 @@ for (s in 1:3) {  # Loop over the scenarios
     # Load the results
     res <- read_csv(
       file = paste0("inst/AR_approximation_example/Results/AR_INARMA11_s", s,
-                    "_lgt", lgt, ".csv")
+                    "_lgt", lgt, "_pois.csv")
     )
 
     # Find problematic rows
@@ -62,16 +62,16 @@ for (s in 1:3) {  # Loop over the scenarios
   to_print <- scenario_temp
   to_print[, 3:13] <- round(scenario_temp[, 3:13], digits = 3)
   to_print <- apply(to_print, 2, as.character)
-  to_print[, 4:13] <- apply(to_print[, 4:13], 2, str_pad, pad = "0", width = 5, side = "right")
+  to_print[, 3:13] <- apply(to_print[, 3:13], 2, str_pad, pad = "0", width = 5, side = "right")
   to_print[1, "tau"] <- "1.000"
 
   to_insert <- matrix("-", nrow = 3, ncol = 4)
   colnames(to_insert) <- c("psi", "mean_psi", "se_psi", "est_se_psi")
   to_print <- cbind(
-    to_print[, c("T", "tau", "se_tau", "est_se_tau")],
+    to_print[, c("T", "tau", "mean_tau", "se_tau", "est_se_tau")],
     to_insert,
-    to_print[, c("beta", "se_beta", "est_se_beta", "kappa", "se_kappa",
-                 "est_se_kappa")]
+    to_print[, c("beta", "mean_beta", "se_beta", "est_se_beta", "kappa",
+                 "mean_kappa", "se_kappa", "est_se_kappa")]
   )
 
   to_print[2:3, c("tau", "kappa", "beta", "psi")] <- ""
@@ -82,6 +82,6 @@ for (s in 1:3) {  # Loop over the scenarios
       only.contents = TRUE,
       include.rownames = FALSE, include.colnames = FALSE,
       hline.after = NULL),
-    file = paste0("inst/AR_approximation_example/Tables/AR_approx_inarma11_sc", s, ".tex")
+    file = paste0("inst/AR_approximation_example/Tables/AR_approx_inarma11_sc", s, "_pois.tex")
   )
 }

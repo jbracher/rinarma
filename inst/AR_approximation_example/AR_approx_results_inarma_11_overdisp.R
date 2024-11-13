@@ -63,11 +63,11 @@ for (family in vals_family) {
 
     # Format the results
     to_print <- scenario_temp
-    to_print[, 3:13] <- round(scenario_temp[, 3:13], digits = 3)
+    to_print[, 3:17] <- round(scenario_temp[, 3:17], digits = 3)
     to_print <- apply(to_print, 2, as.character)
-    to_print[, 4:13] <- apply(to_print[, 4:13], 2, str_pad, pad = "0", width = 5, side = "right")
+    to_print[, 3:17] <- apply(to_print[, 3:17], 2, str_pad, pad = "0", width = 5, side = "right")
     to_print[1, "tau"] <- "1.000"
-    to_print[2:3, c("tau", "kappa", "beta")] <- ""
+    to_print[2:3, c("tau", "kappa", "beta", "psi")] <- ""
 
     write(
       print(
