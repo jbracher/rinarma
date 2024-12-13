@@ -250,7 +250,7 @@ check_arguments_llik <- function(vect, distr_E1, tau, phi, psi, kappa,
     stop("The offspring distribution must be either 'binomial',
          or 'binomial-Poisson'.")
   }
-  if (is.na(zeta) && offspring == "binomial-Poisson") {
+  if (missing(zeta) && offspring == "binomial-Poisson") {
     stop("Please specify the starting value for the 'zeta' prameter.")
   }
 
