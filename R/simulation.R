@@ -28,10 +28,14 @@ sim_inarma <- function(tau, psi = NULL, phi = NULL, beta = NULL, kappa,
     if(psi <= 0) stop("psi needs to be positive.")
   }
   if(!is.null(phi)){
-    if(0 > phi | 1 < phi) stop("phi needs to be from [0, 1].")
+    if(any(0 > phi) | 1 < sum(phi)) stop("phi needs to be from [0, 1].")
   }
   if(!is.null(beta)){
-    if(0 > beta | 1 < beta) stop("beta needs to be from [0, 1].")
+    if(any(0 > beta) | 1 < sum(beta)) stop("beta needs to be from [0, 1].")
+  }
+  if(!is.null(kappa)){
+    if(any(0 > kappa) | 1 < sum(kappa)) stop("kappa needs to be from [0, 1],
+                                             otherwise the process is non-stationary.")
   }
   if (is.null(zeta) && offspring == "binomial-Poisson") {
     stop("For the binomial-Poisson thinning the parameter 'zeta' must
@@ -87,7 +91,11 @@ sim_inarma_poisson <- function(tau, phi, kappa, zeta = NULL, E1 = NULL,
   if(length(tau) == 1){
     if(is.null(lgt)) stop("If tau is scalar lgt needs to be specified.")
     tau <- rep(tau, lgt)
-    if(is.null(E1) & is.null(distr_E1)) E1 <- rpois(1, kappa*tau/(1 - xi))
+    if(is.null(E1) & is.null(distr_E1) & length(phi) == 1) {
+      E1 <- rpois(1, kappa*tau/(1 - xi))
+    } else if (is.null(E1) & is.null(distr_E1) & length(phi) > 1) {
+      stop("For simulating from a model with q > 1, E1 must be a vector of starting values of length q.")
+    }
   }else{
     if(!is.null(lgt)){
       if(length(tau) != lgt){
@@ -105,8 +113,15 @@ sim_inarma_poisson <- function(tau, phi, kappa, zeta = NULL, E1 = NULL,
   }
 
   I <- rpois(n = lgt, lambda = tau)
-  res <- sim_loop(phi = phi, kappa = kappa, zeta = zeta,
-                  I = I, E1 = E1, lgt = lgt)
+  if (max(length(phi), length(kappa)) > 1) {
+    res <- sim_loop_higher_order(phi = phi, kappa = kappa, zeta = zeta,
+                                 I = I, E1 = E1, lgt = lgt)
+  } else if (length(phi) == 1 & length(kappa) == 1) {
+    res <- sim_loop(phi = phi, kappa = kappa, zeta = zeta,
+                    I = I, E1 = E1, lgt = lgt)
+  } else {
+    stop("One of the model parameters missing.")
+  }
 
   return(list(X = tail(res$X, lgt), E = tail(res$E, lgt), I = tail(I, lgt)))
 }
@@ -140,12 +155,14 @@ sim_inarma_hermite <- function(tau, psi, phi, kappa, zeta, a1 = NULL,
     if(is.null(lgt)) stop("If a1 and a2 or tau and psi are scalar lgt needs to be specified.")
     a1 <- rep(a1, lgt)
     a2 <- rep(a2, lgt)
-    if(is.null(E1) & is.null(distr_E1)){
+    if(is.null(E1) & is.null(distr_E1) & length(phi) == 1){
       # sample E1 from stationary distribution if no starting value supplied:
       E1 <-  rherm(1,
                    a1 = (kappa*(1 + xi)*a1 + 2*kappa*(1 + xi - kappa)*a2)/
                      (1 - xi^2),
                    a2 = kappa^2*a2/(1 - xi^2))
+    } else if (is.null(E1) & is.null(distr_E1) & length(phi) > 1) {
+      stop("For simulating from a model with q > 1, E1 must be a vector of starting values of length q.")
     }
   }else{
     if(!is.null(lgt)){
@@ -164,8 +181,15 @@ sim_inarma_hermite <- function(tau, psi, phi, kappa, zeta, a1 = NULL,
   }
 
   I <- rherm(n = lgt, a1 = a1, a2 = a2)
-  res <- sim_loop(phi = phi, kappa = kappa, zeta = zeta,
-                  I = I, E1 = E1, lgt = lgt)
+  if (max(length(phi), length(kappa)) > 1) {
+    res <- sim_loop_higher_order(phi = phi, kappa = kappa, zeta = zeta,
+                                 I = I, E1 = E1, lgt = lgt)
+  } else if (length(phi) == 1 & length(kappa) == 1) {
+    res <- sim_loop(phi = phi, kappa = kappa, zeta = zeta,
+                    I = I, E1 = E1, lgt = lgt)
+  } else {
+    stop("One of the model parameters missing.")
+  }
   return(list(X = tail(res$X, lgt), E = tail(res$E, lgt), I = tail(I, lgt)))
 }
 
@@ -195,13 +219,15 @@ sim_inarma_negbin <- function(tau, psi, phi, kappa, zeta,
     if(is.null(lgt)) stop("If tau and psi are scalar lgt needs to be specified.")
     tau <- rep(tau, lgt)
     psi <- rep(psi, lgt)
-    if(is.null(E1) & is.null(distr_E1)){
+    if(is.null(E1) & is.null(distr_E1) & length(phi) == 1){
       # sample E1 from approximated stationary distribution if no starting value supplied:
       sigma2_I <- tau + psi*tau^2
       mu_E <- kappa*tau/(1 - xi)
       sigma2_E <- (kappa^2*sigma2_I + kappa*(1 - kappa + xi)*tau)/(1 - xi^2)
       size_E <- mu_E^2/(sigma2_E - mu_E)
       E1 <-  rnbinom(1, size = size_E, mu = mu_E)
+    } else if (is.null(E1) & is.null(distr_E1) & length(phi) > 1) {
+      stop("For simulating from a model with q > 1, E1 must be a vector of starting values of length q.")
     }
   }else{
     if(!is.null(lgt)){
@@ -220,8 +246,15 @@ sim_inarma_negbin <- function(tau, psi, phi, kappa, zeta,
   }
 
   I <- rnbinom(n = lgt, size = 1/psi, mu = tau)
-  res <- sim_loop(phi = phi, kappa = kappa, zeta = zeta,
-                  I = I, E1 = E1, lgt = lgt)
+  if (max(length(phi), length(kappa)) > 1) {
+    res <- sim_loop_higher_order(phi = phi, kappa = kappa, zeta = zeta,
+                                 I = I, E1 = E1, lgt = lgt)
+  } else if (length(phi) == 1 & length(kappa) == 1) {
+    res <- sim_loop(phi = phi, kappa = kappa, zeta = zeta,
+                    I = I, E1 = E1, lgt = lgt)
+  } else {
+    stop("One of the model parameters missing.")
+  }
   return(list(X = tail(res$X, lgt), E = tail(res$E, lgt), I = tail(I, lgt)))
 }
 
@@ -260,4 +293,57 @@ sim_loop <- function (phi, kappa, zeta, I, E1, lgt) {
   }
 
   return(list(X = X, E = E))
+}
+
+#' Execute the loop of the INARMA(p,q) model simulation, for
+#' at least one p, q > 1
+#'
+#' @param phi,kappa,zeta the model parameters.
+#' @param I the sequence of imports/innovations with length `lgt`
+#' @param E1 an initial values for \eqn{E_1}, ...\eqn{E_q} .
+#' @param lgt the length of the simulated time series.
+#' @return A named list with the following elements:
+#' \describe{
+#' \item{X}{The process \eqn{X_t}}
+#' \item{E}{The hidden process \eqn{E_t}}
+#' }
+sim_loop_higher_order <- function (phi, kappa, zeta, I, E1, lgt) {
+
+  # Grab the order of the model
+  p <- length(kappa)
+  q <- length(phi)
+  max_order <- max(c(p, q))
+
+  # Pad the parameter vectors so that they are of the same length
+  beta_vec <- c(1 - phi, rep(0, max_order - q), sum(phi))
+  kappa_vec <- c(kappa, rep(0, max_order - p), 1 - sum(kappa))
+
+  # Allocate the containers
+  E <- X <- rep(0, lgt + max_order)
+  L <- integer(q + 1)
+  C <- integer(p + 1)
+
+  # Initialize
+  E[1:q] <- E1
+
+  # Padding I in order not to get NA values at the end of the trajectory (which
+  # is cropped anyway)
+
+  I <- c(I, rep(0, max_order))
+
+  for (k in 1:(lgt + max_order)) {
+
+    # Do the MA thinning and update the processes
+    L <- rmultinom(1, E[k], beta_vec)[, 1]
+    E[k + 1:q] <- E[k + 1:q] + L[1:q]
+    X[k] <- L[max_order + 1] + I[k]
+
+    # Do the AR thinning and update the processes
+    C <- rmultinom(1, X[k], kappa_vec)[, 1]
+    E[k + 1:p] <- E[k + 1:p] + C[1:p]
+  }
+
+  ret_list <- list(E = E[1:lgt], X = X[1:lgt])
+
+  return(ret_list)
 }

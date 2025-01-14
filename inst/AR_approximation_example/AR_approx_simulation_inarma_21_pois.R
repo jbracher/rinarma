@@ -1,6 +1,3 @@
-library(tidyverse)
-library(pracma)
-source("inst/AR_approximation_example/AR_approximation_functions.R")  # Load the functions
 
 ##############################################################################
 ## Inference for the INARMA(2, 1) model using the approximation by an AR model
@@ -14,7 +11,7 @@ kappa <- c(0.2, 0.6)
 beta <- 0.15
 tau <- 2
 
-# Alternative set of parameters
+# Alternative set of parameters, must be uncommented manually to run
 # s <- 2
 # kappa <- c(0.45, 0.25)
 # beta <- 0.35
@@ -40,34 +37,17 @@ for (lgt in vals_lgt) {  # Loop over the series lengths
 
     # Simulate an INARMA(2, 1) model
     set.seed(k)
-    sim <- sim_inarmapq(tau = tau, kappa = kappa, beta = beta, E0 = 1,
-                        t_max = lgt)
+    sim <- sim_inarma(tau = tau, kappa = kappa, beta = beta, family = "Poisson",
+                      offspring = "binomial", lgt = lgt)
 
     # Find the (approximate) maximum likelihood estimates
-    op <- optim(
-      par = c(
-        log_tau = 1,
-        transformed_kappa = orig_par_to_unconstrained(c(0.25, 0.25)),
-        logit_beta = 0
-      ),
-      fn = llik_ar_based_higher,
-      X = sim$X,
-      hessian = TRUE,
-      control = list(fnscale = -1, maxit = 800)  # To change to maximization
-    )
-
-    # Extract and transform the results
-    coeffs <- c(
-      tau = unname(exp(op$par["log_tau"])),
-      kappa = unname(unconstrained_par_to_orig(op$par[2:3])),
-      beta = unname(exp(op$par["logit_beta"]) / (1 + exp(op$par["logit_beta"])))
-    )
-    ses <- get_ses_orig(op$par, op$hessian)
+    fit <- fit_inarma_approx(sim$X, family = "Poisson", order = c(p = 2, q = 1),
+                            lag_max = 10)
 
     # Save the results
-    res_21[k, 1:4] <- coeffs
-    res_21[k, 5:8] <- ses
-    conv_21[k] <- op$convergence
+    res_21[k, 1:4] <- fit$coefficients
+    res_21[k, 5:8] <- fit$se
+    conv_21[k] <- fit$convergence
     sims[k, ] <- sim$X
   }
 
