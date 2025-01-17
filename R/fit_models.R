@@ -385,6 +385,13 @@ choose_support <- function(observed, tau, phi, kappa, psi = NULL, family){
 
   upper_observed <- ceiling(1.2*max(observed))
 
+  # Keep the maximum value of the support lower in case that the parameter
+  # combination suggests disproportionally large values compared to the
+  # observations. This can happen, when the model does not fit the data nicely,
+  # e.g. the data generating process is a more general model
+  upper_X <- min(upper_X, upper_observed * 10)
+  upper_E <- min(upper_E, upper_observed * 10)
+
   return(0:max(upper_X, upper_E, upper_observed))
 }
 
