@@ -42,6 +42,17 @@ summary.inarma <- function(model){
     cat("\n")
     cat("Number of observations used for fitting:", model$nobs, "\n")
   }
+  if(model$fitting_method == "AR-approximation"){
+    cat("Estimated standard errors:\n")
+    print(model$se)
+    cat("\n")
+    cat("Number of observations used for fitting:", model$nobs, "\n")
+    cat("AIC:", model$AIC, "\n")
+    convergence_code <- model$optim$convergence
+    convergence_text <- ifelse(convergence_code == 0, "successful", "failed")
+    cat("\n")
+    cat("Convergence of optimizer", convergence_text, paste0("(optim$convergence = ", convergence_code, ")."))
+  }
 }
 
 #' Print an INARMA(1, 1) model fit
@@ -70,6 +81,9 @@ fitted.inarma <- function(model){
   if(model$fitting_method == "moments"){
     stop("No fitted values available for model fitted via method of moments.")
   }else{
+    if(model$fitting_method == "AR-approximation"){
+      warning("AR-approximation used for the fitting, returning approximate fitted values.")
+    }
     model$fitted_values
   }
 }

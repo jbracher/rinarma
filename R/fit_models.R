@@ -343,6 +343,7 @@ fit_inarma <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
   ret$nobs <- length(observed)
   ret$optim <- opt
   ret$fitting_method <- "maximum_likelihood"
+  ret$order <- c(p = 1, q = 1)
 
   class(ret) <- "inarma"
   return(ret)
@@ -630,6 +631,7 @@ fit_inar <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
   ret$nobs <- length(observed)
   ret$optim <- opt
   ret$fitting_method <- "maximum_likelihood"
+  ret$order <- c(p = 1, q = 0)
 
   class(ret) <- "inarma"
   return(ret)

@@ -94,8 +94,8 @@ fit_ingarch <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
     names_ok <- sum((names(start) %in% c("log_tau", "logit_kappa", "logit_beta",
                                     "log_mean_E1"))) == 4
     names_ok <- names_ok &&
-      (family == "Hermite" && any(names(start) %in% "logit_psi") ||
-         family == "NegBin" && any(names(start) %in% "log_psi"))
+      (family == "Poisson" || (family == "Hermite" && any(names(start) %in% "logit_psi")) ||
+         (family == "NegBin" && any(names(start) %in% "log_psi")))
     if (names_ok) {
       start_val <- start
     } else{
@@ -142,6 +142,8 @@ fit_ingarch <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
                       mean_E1 = exp(pars["log_mean_E1"]))
     }
   }
+
+  start_val[is.null(start_val) | is.infinite(start_val) | is.na(start_val)] <- 0
 
   # Optimize
   opt <- optim(start_val, nllik, control = control_optim, hessian = return_se)
@@ -252,6 +254,7 @@ fit_ingarch <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
   ret$nobs <- length(observed)
   ret$optim <- opt
   ret$fitting_method <- "maximum_likelihood"
+  ret$order <- c(p = 1, q = 1)
   class(ret) <- "inarma"
 
   return(ret)
@@ -459,6 +462,7 @@ fit_inarch <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
   ret$nobs <- length(observed)
   ret$optim <- opt
   ret$fitting_method <- "maximum_likelihood"
+  ret$order <- c(p = 1, q = 0)
   class(ret) <- "inarma"
 
   return(ret)
