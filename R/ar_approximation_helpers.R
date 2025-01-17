@@ -99,17 +99,17 @@ get_ses_orig <- function (pars, hessian_transformed,
     beta_se <- delta_method_for_pairs(transformed_beta, cov_raw[where_beta, where_beta])
   }
 
-  ret <- c(tau_se, kappa_se, beta_se)
+  ret <- c(tau = tau_se, kappa = kappa_se, beta = beta_se)
 
   # Standard error for psi if required by the distributional family
   if (family == "Hermite") {  # Hermite family
     transformed_psi <- pars[grepl("psi", pars_names)]
     psi_se <- as.numeric(sqrt(cov_raw["logit_psi", "logit_psi"]) * exp(transformed_psi) / (1 + exp(transformed_psi))^2)
-    ret <- c(ret, psi_se)
+    ret <- c(ret, psi = psi_se)
   } else if (family == "NegBin") {  # beta is 2D
     transformed_psi <- pars[grepl("psi", pars_names)]
     psi_se <- as.numeric(sqrt(cov_raw["log_psi", "log_psi"]) * exp(transformed_psi))
-    ret <- c(ret, psi_se)
+    ret <- c(ret, psi = psi_se)
   }
 
   if (anyNA(ret) || any(ret < 0)) {

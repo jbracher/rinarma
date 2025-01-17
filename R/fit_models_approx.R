@@ -1,5 +1,11 @@
 fit_inarma_approx <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
-                             order = c(p = 1, q = 1), lag_max = 10){
+                              offspring = "binomial",
+                              order = c(p = 1, q = 1), lag_max = 10,
+                              control_optim = NULL){
+
+  if (offspring != "binomial") {
+    stop("Other than binomial offspring is not supported.")
+  }
 
   if (all(order <= 0)) {
     stop("Invalid model order.")
@@ -7,37 +13,33 @@ fit_inarma_approx <- function(observed, family = c("Poisson", "Hermite", "NegBin
     stop("Fitting model of order higher than 2 is not supported.")
   }
 
-  if (family %in% c("Poisson", "Hermite", "NegBin")) {
-    if (family != "Poisson" && any(order) == 2) {
-      stop("Fitting higher order Hermite, or Negative binomial INARMA models is
-           not supported.")
-    }
-  } else {
-    stop("Invalid family name.")
-  }
-
   if (all(order == 1)) {
-    ret <- ar_approx_11(observed, lag_max, family)
+    ret <- ar_approx_11(observed, lag_max, family,
+                        control_optim = control_optim)
   } else {
-    ret <- ar_approx_higher(observed, lag_max, order)
+    ret <- ar_approx_higher(observed, lag_max, order, family,
+                            control_optim = control_optim)
   }
-
 
   ret <- c(
     ret,
-    family = family,
-    observed = observed,
-    lik_distr = NULL,
-    fitted_values = NULL,
-    fitted_variance = NULL,
-    pearson_residuals = NULL,
-    nobs = length(observed),
-    fitting_method = "AR-approximation"
+    list(
+      family = family,
+      offspring = "binomial",
+      observed = observed,
+      lik_distr = NULL,
+      nobs = length(observed),
+      order = order,
+      fitting_method = "AR-approximation"
     )
+  )
+
+  class(ret) <- "inarma"
+
   return(ret)
 }
 
-ar_approx_11 <- function (X, lag_max, family) {
+ar_approx_11 <- function (X, lag_max, family, control_optim = NULL) {
 
   # Set 3 different starting values in case the optimization does not converge
   start_transformed <- matrix(c(1, 0, 0, 0, 0.2, 1, 1, -0.1, 0.2, -1, -1, -1,
@@ -73,6 +75,14 @@ ar_approx_11 <- function (X, lag_max, family) {
                         is.infinite(start_transformed[4, ])] <- 0
   }
 
+  # Check the control for the optimization procedure
+  if (is.null(control_optim) || !is.list(control_optim)) {
+    control_optim <- list(fnscale = -1, maxit = 800)
+  } else {
+    control_optim$fnscale <- -1
+    control_optim$maxit <- max(control_optim$maxit, 800, na.rm = TRUE)
+  }
+
   # Refit until we get a non-problematic estimate
   refit_iter <- 1
   refit <- TRUE
@@ -81,6 +91,7 @@ ar_approx_11 <- function (X, lag_max, family) {
     op <- optim(
       par = start_transformed[refit_iter, ],
       fn = llik_ar_based_11,
+      return_fitted = FALSE,
       X = X,
       family = family,
       lag_max = lag_max,
@@ -106,12 +117,19 @@ ar_approx_11 <- function (X, lag_max, family) {
   if (refit_iter > 4 && op$convergence != 0) {
     warning("Optimization did not converge.")
   }
+
+  fitted_vals <- llik_ar_based_11(op$par, X, lag_max = lag_max,
+                                 return_fitted = TRUE, family = family)
+
   ret <- list(
     coefficients_raw = op$par,
     se_raw = sqrt(pmax(diag(get_ses$cov_raw), 0)),
     cov_raw = get_ses$cov_raw,
     coefficients = coeffs,
     se = get_ses$ses,
+    fitted_values = fitted_vals$fitted_values,
+    fitted_variance = fitted_vals$fitted_variance,
+    pearson_residuals = (X - fitted_vals$fitted_values) / sqrt(fitted_vals$fitted_variance),
     dim = length(coeffs),
     loglikelihood = op$value,
     AIC = 2 * (-op$value + length(coeffs)),
@@ -121,22 +139,40 @@ ar_approx_11 <- function (X, lag_max, family) {
   return(ret)
 }
 
-ar_approx_higher <- function (X, lag_max, order) {
+ar_approx_higher <- function (X, lag_max, order, family) {
 
   # Set 4 different starting values
   start_transformed <- matrix(
     c(
-      1, rep(0, order["p"]), rep(0, order["q"]),
-      0.2, rep(1, order["p"]), rep(1, order["q"]),
-      -0.1, rep(0.2, order["p"]), rep(1, order["q"]),
-      -0.5, rep(0.2, order["p"]), rep(-0.2, order["q"])
+      1, rep(0, order["p"]), rep(0, order["q"]), 0.2,
+      0.2, rep(1, order["p"]), rep(1, order["q"]), 0,
+      -0.1, rep(0.2, order["p"]), rep(1, order["q"]), -0.2,
+      -0.5, rep(0.2, order["p"]), rep(-0.2, order["q"]), -1
     ),
     nrow = 4,
-    ncol = 1 + sum(order),
+    ncol = 2 + sum(order),
     byrow = TRUE
   )
-  colnames(start_transformed) <- c("log_tau", paste0("transformed_kappa", 1:order["p"]),
-                paste0("transformed_beta", 1:order["q"]))
+
+  if (family == "NegBin") {
+    colnames(start_transformed) <- c("log_tau", paste0("transformed_kappa", 1:order["p"]),
+                                     paste0("transformed_beta", 1:order["q"]), "log_psi")
+  } else if (family == "Hermite") {
+    colnames(start_transformed) <- c("log_tau", paste0("transformed_kappa", 1:order["p"]),
+                                     paste0("transformed_beta", 1:order["q"]), "logit_psi")
+  } else if (family == "Poisson") {
+    start_transformed <- start_transformed[, -(2 + sum(order))]
+    colnames(start_transformed) <- c("log_tau", paste0("transformed_kappa", 1:order["p"]),
+                                     paste0("transformed_beta", 1:order["q"]))
+  }
+
+  # Check the control for the optimization procedure
+  if (is.null(control_optim) || !is.list(control_optim)) {
+    control_optim <- list(fnscale = -1, maxit = 1000)
+  } else {
+    control_optim$fnscale <- -1
+    control_optim$maxit <- max(control_optim$maxit, 1000, na.rm = TRUE)
+  }
 
   # Refit until we get a non-problematic estimate
   refit_iter <- 1
@@ -148,6 +184,7 @@ ar_approx_higher <- function (X, lag_max, order) {
       fn = llik_ar_based_higher,
       X = X,
       lag_max = lag_max,
+      family = family,
       hessian = TRUE,
       control = list(fnscale = -1, maxit = 800)  # To change to maximization
     )
@@ -166,20 +203,39 @@ ar_approx_higher <- function (X, lag_max, order) {
       coeffs <- c(coeffs, beta = unname(exp(op$par["transformed_beta1"]) / (1 + exp(op$par["transformed_beta1"]))))
     }
 
+    if (family == "Hermite") {
+      coeffs <- c(coeffs, psi = unname(exp(op$par["logit_psi"]) / (1 + exp(op$par["logit_psi"]))))
+    } else if (family == "NegBin") {
+      coeffs <- c(coeffs, psi = unname(exp(op$par["log_psi"])))
+    }
+
     # Extract and transform the standard errors
-    get_ses <- get_ses_orig(op$par, op$hessian, family = "Poisson")
+    get_ses <- get_ses_orig(op$par, op$hessian, family = family)
     refit <- anyNA(get_ses$ses) | op$convergence != 0
     refit_iter <- refit_iter + 1
   }
   if (refit_iter > 4 && op$convergence != 0) {
     warning("Optimization did not converge.")
   }
+
+  fitted_vals <- llik_ar_based_higher(op$par, X, lag_max = lag_max,
+                                      return_fitted = TRUE, family = family,
+                                      return_approx_OK = TRUE)
+
+  if (!fitted_vals$approx_OK) {
+    warning("Error of the evaluation of the INARMA autocorellation is higher than 1e-16.
+            Consider lowering the maximum lag used for the approximating AR model.")
+  }
+
   ret <- list(
     coefficients_raw = op$par,
     se_raw = sqrt(pmax(diag(get_ses$cov_raw), 0)),
     cov_raw = get_ses$cov_raw,
     coefficients = coeffs,
     se = get_ses$ses,
+    fitted_values = fitted_vals$fitted_values,
+    fitted_variance = fitted_vals$fitted_variance,
+    pearson_residuals = (X - fitted_vals$fitted_values) / sqrt(fitted_vals$fitted_variance),
     dim = length(coeffs),
     loglikelihood = op$value,
     AIC = 2 * (-op$value + length(coeffs)),

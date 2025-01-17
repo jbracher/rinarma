@@ -6,7 +6,7 @@
 #' @param lag_max order of the AR model to be used for the approximation
 #' @param family family of the INARMA model; one of `"Poisson"`, `"Hermite"` or `"NegBin"`
 #' @return the likelihood of the approximating AR model
-llik_ar_based_11 <- function (pars, X, lag_max = 8,
+llik_ar_based_11 <- function (pars, X, lag_max = 8, return_fitted = FALSE,
                               family = c("Poisson", "Hermite", "NegBin")) {
 
   # Extract parameter values
@@ -48,7 +48,18 @@ llik_ar_based_11 <- function (pars, X, lag_max = 8,
     # Calculate the likelihood
     llik_ar <- sum(log(dnorm(noise_reconstructed, mean = wn_mean, sd = sqrt(wn_var))))
 
-    return(llik_ar)
+    if (return_fitted) {
+      fitted_vals <- c(X[(1:lag_max)], wn_mean + X[-(1:lag_max)] - noise_reconstructed)
+      return(
+        list(
+          llik_ar = llik_ar,
+          fitted_values = fitted_vals,
+          fitted_variance = rep(wn_mean, length(fitted_vals))
+        )
+      )
+    } else {
+      return(llik_ar)
+    }
   }
 }
 
@@ -60,7 +71,9 @@ llik_ar_based_11 <- function (pars, X, lag_max = 8,
 #' @param X the observed count series
 #' @param lag_max order of the AR model to be used for the approximation
 #' @return the likelihood of the approximating AR model
-llik_ar_based_higher <- function (pars, X, lag_max = 10) {
+llik_ar_based_higher <- function (pars, X, lag_max = 10, return_fitted = FALSE,
+                                  family = c("Poisson", "Hermite", "NegBin"),
+                                  return_approx_OK = FALSE) {
 
   # Extract parameter values
   pars_names <- names(pars)
@@ -78,8 +91,20 @@ llik_ar_based_higher <- function (pars, X, lag_max = 10) {
     beta <- unconstrained_par_to_orig(transformed_beta)
   }
 
+  if (family == "Poisson") {
+    psi <- 0
+  } else if (family == "Hermite") {
+    psi <- exp(pars["logit_psi"]) / (1 + exp(pars["logit_psi"]))
+  } else if (family == "NegBin") {
+    psi <- exp(pars["log_psi"])
+  }
+
+  sigma2_tau <- (1 + psi) * tau
+
   # Calculate the exact autocorrelation
-  acf_inarma <- acf_exact(lag_max, beta = beta, kappa = kappa)
+  acov_inarma <- acov_exact(lag_max, beta = beta, kappa = kappa, tau = tau,
+                          sigma2_tau = sigma2_tau)
+  acf_inarma <- acov_inarma$acov / acov_inarma$acov[1]
 
   # Solve the Yule-Walker equations
   YW_mat <- pracma::Toeplitz(acf_inarma[-length(acf_inarma)])
@@ -95,16 +120,31 @@ llik_ar_based_higher <- function (pars, X, lag_max = 10) {
     # Reconstruct the noise
     lagged_obs_matrix <- sapply(0:(lag_max - 1), lag, x = X)[-(1:(lag_max - 1)), ]
     noise_reconstructed <- X[-(1:lag_max)] - lagged_obs_matrix[-nrow(lagged_obs_matrix), ] %*% ar_coeffs
-    ar_mean <- mean(noise_reconstructed)
-    ar_var <- var(noise_reconstructed)
 
     # Calculate the parameters of the white noise
     wn_mean <- tau * (1 - sum(ar_coeffs)) / (1 - sum(kappa))
-    wn_var <- tau * (1 -  sum(ar_coeffs * acf_inarma[-1])) / (1 - sum(kappa))
+    wn_var <- acov_inarma$acov[1] * (1 -  sum(ar_coeffs * acf_inarma[-1]))
 
     # Calculate the likelihood
     llik_ar <- sum(log(dnorm(noise_reconstructed, mean = wn_mean, sd = sqrt(wn_var))))
 
-    return(llik_ar)
+    if (return_fitted) {
+      fitted_vals <- c(X[(1:lag_max)], wn_mean + X[-(1:lag_max)] - noise_reconstructed)
+      ret <- list(
+        llik_ar = llik_ar,
+        fitted_values = fitted_vals,
+        fitted_variance = rep(unname(wn_mean), length(fitted_vals))
+      )
+      if (return_approx_OK) {
+        ret <- c(ret, approx_OK = acov_inarma$approx_OK)
+      }
+    } else {
+      if (return_approx_OK) {
+        ret <- c(llik_ar, approx_OK = acov_inarma$approx_OK)
+      } else {
+        ret <- llik_ar
+      }
+    }
+    return(ret)
   }
 }
