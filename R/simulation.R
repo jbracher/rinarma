@@ -20,12 +20,15 @@
 sim_inarma <- function(tau, psi = NULL, phi = NULL, beta = NULL, kappa,
                        zeta = NULL, lgt,
                        offspring = c("binomial", "binomial-Poisson"),
-                       family = c("Poisson", "Hermite", "NegBin")){
+                       family = c("Poisson", "Hermite", "NegBin"),
+                       E1 = NULL){
 
   if(is.null(phi) == is.null(beta)) stop("Exactly one of phi and beta needs to be specified.")
   if(tau <= 0) stop("tau needs to be positive.")
   if(!is.null(psi)){
-    if(psi <= 0) stop("psi needs to be positive.")
+    if (family == "Poisson") {
+      warning("Poisson INARMA does is equidispersed, the overdispersion parameter `psi` will be ignored")
+      } else if(psi <= 0) stop("psi needs to be positive")
   }
   if(!is.null(phi)){
     if(any(0 > phi) | 1 < sum(phi)) stop("phi needs to be from [0, 1].")
@@ -39,7 +42,10 @@ sim_inarma <- function(tau, psi = NULL, phi = NULL, beta = NULL, kappa,
   }
   if (is.null(zeta) && offspring == "binomial-Poisson") {
     stop("For the binomial-Poisson thinning the parameter 'zeta' must
-         be supplied")
+         be supplied.")
+  }
+  if (offspring == "binomial-Poisson" && is.null(E1)) {
+    stop("For the binomial-Poisson thinning the initial value E1 must be supplied.")
   }
 
   # internal codes use phi parameterization:
@@ -48,7 +54,7 @@ sim_inarma <- function(tau, psi = NULL, phi = NULL, beta = NULL, kappa,
   }
 
   # collect arguments in list:
-  args <- list(tau = tau, phi = phi, kappa = kappa, lgt = lgt)
+  args <- list(tau = tau, phi = phi, kappa = kappa, lgt = lgt, E1 = E1)
   # add psi only if needed
   if(family %in% c("Hermite", "NegBin")) args$psi <- psi
   if (offspring == "binomial") {
@@ -85,7 +91,7 @@ sim_inarma <- function(tau, psi = NULL, phi = NULL, beta = NULL, kappa,
 #' }
 sim_inarma_poisson <- function(tau, phi, kappa, zeta = NULL, E1 = NULL,
                                distr_E1 = NULL, lgt = NULL){
-  xi <- 1 - phi + phi*kappa
+  xi <- 1 - phi + (1 - sum(1 - phi)) * kappa
 
   # handle case where tau is scalar:
   if(length(tau) == 1){
@@ -148,7 +154,7 @@ sim_inarma_hermite <- function(tau, psi, phi, kappa, zeta, a1 = NULL,
   pars <- to_a1a2_herm(a1 = a1, a2 = a2, mu = tau, psi = psi)
   a1 <- pars$a1
   a2 <- pars$a2
-  xi <- 1 - phi + phi*kappa
+  xi <- 1 - phi + (1 - sum(1 - phi)) * kappa
 
   # handle case where a1, a2 are scalar:
   if(length(a1) == 1){
@@ -212,7 +218,7 @@ sim_inarma_hermite <- function(tau, psi, phi, kappa, zeta, a1 = NULL,
 sim_inarma_negbin <- function(tau, psi, phi, kappa, zeta,
                                E1 = NULL, distr_E1 = NULL, lgt = NULL){
 
-  xi <- 1 - phi + phi*kappa
+  xi <- 1 - phi + (1 - sum(1 - phi)) * kappa
 
   # handle case where tau, psi are scalar:
   if(length(tau) == 1 & length(psi)){
@@ -315,7 +321,7 @@ sim_loop_higher_order <- function (phi, kappa, zeta, I, E1, lgt) {
   max_order <- max(c(p, q))
 
   # Pad the parameter vectors so that they are of the same length
-  beta_vec <- c(1 - phi, rep(0, max_order - q), sum(phi))
+  beta_vec <- c(1 - phi, rep(0, max_order - q), 1 - sum(1 - phi))
   kappa_vec <- c(kappa, rep(0, max_order - p), 1 - sum(kappa))
 
   # Allocate the containers
