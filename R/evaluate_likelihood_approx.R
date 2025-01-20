@@ -16,13 +16,14 @@ llik_ar_based_11 <- function (pars, X, lag_max = 8, return_fitted = FALSE,
 
   if (family == "Poisson") {
     psi <- 0
+    sigma2_tau <- tau
   } else if (family == "Hermite") {
     psi <- exp(pars["logit_psi"]) / (1 + exp(pars["logit_psi"]))
+    sigma2_tau <- (1 + psi) * tau
   } else if (family == "NegBin") {
     psi <- exp(pars["log_psi"])
+    sigma2_tau <- (1 + psi * tau) * tau
   }
-
-  sigma2_tau <- (1 + psi) * tau
 
   # Calculate the exact autocorrelation
   acf_inarma <- acf_exact_11(lag_max, beta, kappa, tau, sigma2_tau)
@@ -93,13 +94,14 @@ llik_ar_based_higher <- function (pars, X, lag_max = 10, return_fitted = FALSE,
 
   if (family == "Poisson") {
     psi <- 0
+    sigma2_tau <- tau
   } else if (family == "Hermite") {
     psi <- exp(pars["logit_psi"]) / (1 + exp(pars["logit_psi"]))
+    sigma2_tau <- (1 + psi) * tau
   } else if (family == "NegBin") {
     psi <- exp(pars["log_psi"])
+    sigma2_tau <- (1 + psi * tau) * tau
   }
-
-  sigma2_tau <- (1 + psi) * tau
 
   # Calculate the exact autocorrelation
   acov_inarma <- acov_exact(lag_max, beta = beta, kappa = kappa, tau = tau,
