@@ -44,7 +44,7 @@ for (lgt in vals_lgt) {
   # Load the results
   res <- read_csv(
     file = paste0("inst/AR_approximation_example/Results/AR_INARMA21_s", s,
-                  "_lgt", lgt, ".csv")
+                  "_lgt_", lgt, "_pois.csv")
     )
 
   # Find problematic rows
