@@ -6,7 +6,6 @@ library(tidyverse)
 vals_tau <- c(1, 1, 1)
 vals_beta <- c(0.5, 0.2, 0.1)
 vals_kappa <- c(0.5, 0.6, 0.8)
-vals_psi <- c(0.5, 0.7, 0.9)
 vals_zeta <- c(0.5, 0.5, 0.5)
 
 vals_lgt <- c(250, 500, 1000)
@@ -29,7 +28,7 @@ for (s in 1:3) {  # Loop over the scenarios
       # Simulate an INARMA(1, 1) model
       set.seed(k)
       dat[k, ] <- sim_inarma(tau = tau, kappa = kappa, beta = beta, zeta = zeta,
-                             family = "Poisson", offspring = "binomial",
+                             family = "Poisson", offspring = "binomial-Poisson",
                              lgt = lgt, E1 = 1)$X
 
     }
