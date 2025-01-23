@@ -1,3 +1,4 @@
+library(tidyverse)
 
 ##############################################################################
 ## Inference for the INARMA(2, 1) model using the approximation by an AR model
@@ -18,7 +19,7 @@ tau <- 2
 # tau <- 1.5
 
 lag_max <- 10  # The maximum lag of the approximating AR model
-vals_lgt <- c(250, 500, 1000)
+vals_lgt <- c(250, 500, 1000, 2000)
 
 # Run the loops ----------------------------------------------------------------
 
@@ -49,6 +50,7 @@ for (lgt in vals_lgt) {  # Loop over the series lengths
     res_21[k, 5:8] <- fit$se
     conv_21[k] <- fit$convergence
     sims[k, ] <- sim$X
+    if (k %% 50 == 0) print(paste("Finished iteration:", k))
   }
 
   print(paste("Finished length:", lgt))
@@ -57,5 +59,5 @@ for (lgt in vals_lgt) {  # Loop over the series lengths
   sim_tab <- as_tibble(sims)
 
   # Write the results
-  write_csv(results_tab, file = paste0("inst/AR_approximation_example/Results/AR_INARMA21_s", s, "_lgt", lgt, ".csv"))
+  write_csv(results_tab, file = paste0("inst/AR_approximation_example/Results/AR_INARMA21_s", s, "_lgt_", lgt, "_pois.csv"))
 }

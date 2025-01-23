@@ -12,23 +12,24 @@ beta <- 0.15
 tau <- 2
 
 # Alternative set of parameters, must be uncommented manually to run
-s <- 2
-kappa <- c(0.45, 0.25)
-beta <- 0.35
-tau <- 1.5
+# s <- 2
+# kappa <- c(0.45, 0.25)
+# beta <- 0.35
+# tau <- 1.5
 
 lag_max <- 10  # The maximum lag of the approximating AR model
-vals_lgt <- c(250, 500, 1000)
+vals_lgt <- c(250, 500, 1000, 2000)
 scenario_temp <- matrix(
   NA,
-  nrow = 3,
-  ncol = 17,
+  nrow = 4,
+  ncol = 21,
   dimnames = list(
-    c(250, 500, 1000),
+    c(250, 500, 1000, 2000),
     c("T", "tau", "mean_tau", "se_tau", "est_se_tau",
       "beta", "mean_beta", "se_beta", "est_se_beta",
       "kappa1", "mean_kappa1", "se_kappa1", "est_se_kappa1",
-      "kappa2", "mean_kappa2", "se_kappa2", "est_se_kappa2")
+      "kappa2", "mean_kappa2", "se_kappa2", "est_se_kappa2",
+      "psi", "mean_psi", "se_psi", "est_se_psi")
   )
 )
 
@@ -72,7 +73,18 @@ to_print[, 3:17] <- round(scenario_temp[, 3:17], digits = 3)
 to_print <- apply(to_print, 2, as.character)
 to_print[, 4:17] <- apply(to_print[, 4:17], 2, str_pad, pad = "0", width = 5, side = "right")
 to_print[1, "tau"] <- ifelse(s == 1, "2.000", "1.500")
-to_print[2:3, c("tau", "kappa1", "kappa2", "beta")] <- ""
+
+to_insert <- matrix("-", nrow = 4, ncol = 4)
+colnames(to_insert) <- c("psi", "mean_psi", "se_psi", "est_se_psi")
+to_print <- cbind(
+  to_print[, c("T", "tau", "mean_tau", "se_tau", "est_se_tau")],
+  to_insert,
+  to_print[, c("beta", "mean_beta", "se_beta", "est_se_beta", "kappa1",
+               "mean_kappa1", "se_kappa1", "est_se_kappa1", "kappa2",
+               "mean_kappa2", "se_kappa2", "est_se_kappa2")]
+)
+
+to_print[2:4, c("tau", "kappa1", "kappa2", "beta", "psi")] <- ""
 
 write(
   print(
@@ -80,5 +92,5 @@ write(
         only.contents = TRUE,
         include.rownames = FALSE, include.colnames = FALSE,
         hline.after = NULL),
-  file = paste0("inst/AR_approximation_example/Tables/AR_approx_inarma21_sc", s, ".tex")
+  file = paste0("inst/AR_approximation_example/Tables/AR_approx_inarma21_sc", s, "pois.tex")
 )
