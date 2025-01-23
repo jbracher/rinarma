@@ -1,3 +1,59 @@
+#' Fitting an INARMA model using the approximation by an AR model
+#'
+#' Inference for INARMA(p, q) model (p,q <= 2) using the Ar-approximation as
+#' described in Bracher and Sobolova (2025).
+#'
+#' For the model definition see the `?fit_inarma` page of the documentation.
+#'
+#' The function uses a moment matching procedure to match the INARMA and AR
+#' model of order `lag_max`.
+#'
+#' @export
+#'
+#' @examples
+#' data("measles")
+#' X <- measles$value
+#' # Note: running the fit takes a little while.
+#' \dontrun{
+#' fit <- fit_inarma_approx(X, family = "Poisson", order = c(p = 1, q = 1))
+#' summary(fit)
+#' plot(fit, type = "fit")
+#' }
+#'
+#'
+#' @param observed a vector of observed count values
+#' @param family the distributional family; one of `"Poisson"`, `"Hermite"` or `"NegBin"`
+#' @param offspring the offspring distribution, or in other words, the type of
+#' the \eqn{\kappa \bullet X_t} thinning; the AR-approximation procedure
+#' supports only `"binomial"`.
+#' @param order a vector with two named elements `p` and `q` denoting the order
+#' of the INARMA(p, q) model to be fitted. p,q <= 2
+#' @param lag_max the order of the approximate AR model.
+#' @param control_optim a list of options passed to `optim`
+#' @return an object of class `inarma`. This is a list with the following elements:
+#' \describe{
+#' \item{family}{the distribution family used.}
+#' \item{coefficients_raw}{the estimated model coefficients on the internal scale.}
+#' \item{se_raw}{the estimated standard errors on the internal scale.}
+#' \item{cov_raw}{covariance matrix of the estimates on the internal scale.}
+#' \item{coefficients}{the estimated model parameters transformed back to the natural scale.}
+#' \item{se}{the estimated standard errors transformed back to the natural scale.}
+#' \item{observed}{the vector of observed values provided by the user.}
+#' \item{lik_distr}{`NULL` value for the AR-approximation}
+#' \item{fitted_values}{fitted values calculated from the approximate AR model}
+#' \item{fitted_variance}{the fitted conditional variances calculated from the
+#' approximate AR model. In the case of the AR model, they are just the estimate
+#'  of the white noise variance}
+#' \item{pearson_residuals}{the Pearson residuals, again obtained from the AR model}
+#' \item{dim}{the number of fitted parameters}
+#' \item{loglikelihood}{the log-likelihood of the Approximate model}
+#' \item{AIC}{the resulting (approximate) AIC}
+#' \item{convergence}{indicates whether optimization converged}
+#' \item{nobs}{the number of observations}
+#' \item{optim}{return object of the call to `optim`}
+#' \item{order}{order of the fitted INARMA model.}
+#' \item{fitting_method}{the method used to fit the model, here `"AR-approximation"`.}
+#' }
 fit_inarma_approx <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
                               offspring = "binomial",
                               order = c(p = 1, q = 1), lag_max = 10,
@@ -39,6 +95,30 @@ fit_inarma_approx <- function(observed, family = c("Poisson", "Hermite", "NegBin
   return(ret)
 }
 
+#' Function calculating the AR-approximation for an INARMA(1, 1) model.
+#'
+#' @param X a vector of observed count values
+#' @param family the distributional family; one of `"Poisson"`, `"Hermite"` or `"NegBin"`
+#' @param lag_max the order of the approximate AR model.
+#' @param control_optim a list of options passed to `optim`
+#' @return an object of class `inarma`. This is a list with the following elements:
+#' \describe{
+#' \item{coefficients_raw}{the estimated model coefficients on the internal scale.}
+#' \item{se_raw}{the estimated standard errors on the internal scale.}
+#' \item{cov_raw}{covariance matrix of the estimates on the internal scale.}
+#' \item{coefficients}{the estimated model parameters transformed back to the natural scale.}
+#' \item{se}{the estimated standard errors transformed back to the natural scale.}
+#' \item{fitted_values}{fitted values calculated from the approximate AR model}
+#' \item{fitted_variance}{the fitted conditional variances calculated from the
+#' approximate AR model. In the case of the AR model, they are just the estimate
+#'  of the white noise variance}
+#' \item{pearson_residuals}{the Pearson residuals, again obtained from the AR model}
+#' \item{dim}{the number of fitted parameters}
+#' \item{loglikelihood}{the log-likelihood of the Approximate model}
+#' \item{AIC}{the resulting (approximate) AIC}
+#' \item{convergence}{indicates whether optimization converged}
+#' \item{optim}{return object of the call to `optim`}
+#' }
 ar_approx_11 <- function (X, lag_max, family, control_optim = NULL) {
 
   # Set 3 different starting values in case the optimization does not converge
@@ -139,7 +219,34 @@ ar_approx_11 <- function (X, lag_max, family, control_optim = NULL) {
   return(ret)
 }
 
-ar_approx_higher <- function (X, lag_max, order, family) {
+#' Function calculating the AR-approximation for an INARMA(p, q) model, where
+#' p,q <= 2.
+#'
+#' @param X a vector of observed count values
+#' @param family the distributional family; one of `"Poisson"`, `"Hermite"` or `"NegBin"`
+#' @param lag_max the order of the approximate AR model.
+#' @param order a vector with two named elements `p` and `q` denoting the order
+#' of the INARMA(p, q) model to be fitted. p,q <= 2
+#' @param control_optim a list of options passed to `optim`
+#' @return an object of class `inarma`. This is a list with the following elements:
+#' \describe{
+#' \item{coefficients_raw}{the estimated model coefficients on the internal scale.}
+#' \item{se_raw}{the estimated standard errors on the internal scale.}
+#' \item{cov_raw}{covariance matrix of the estimates on the internal scale.}
+#' \item{coefficients}{the estimated model parameters transformed back to the natural scale.}
+#' \item{se}{the estimated standard errors transformed back to the natural scale.}
+#' \item{fitted_values}{fitted values calculated from the approximate AR model}
+#' \item{fitted_variance}{the fitted conditional variances calculated from the
+#' approximate AR model. In the case of the AR model, they are just the estimate
+#'  of the white noise variance}
+#' \item{pearson_residuals}{the Pearson residuals, again obtained from the AR model}
+#' \item{dim}{the number of fitted parameters}
+#' \item{loglikelihood}{the log-likelihood of the Approximate model}
+#' \item{AIC}{the resulting (approximate) AIC}
+#' \item{convergence}{indicates whether optimization converged}
+#' \item{optim}{return object of the call to `optim`}
+#' }
+ar_approx_higher <- function (X, lag_max, order, family, control_optim = NULL) {
 
   # Set 4 different starting values
   start_transformed <- matrix(
@@ -172,6 +279,14 @@ ar_approx_higher <- function (X, lag_max, order, family) {
   } else {
     control_optim$fnscale <- -1
     control_optim$maxit <- max(control_optim$maxit, 1000, na.rm = TRUE)
+  }
+
+  # Check the control for the optimization procedure
+  if (is.null(control_optim) || !is.list(control_optim)) {
+    control_optim <- list(fnscale = -1, maxit = 800)
+  } else {
+    control_optim$fnscale <- -1
+    control_optim$maxit <- max(control_optim$maxit, 800, na.rm = TRUE)
   }
 
   # Refit until we get a non-problematic estimate

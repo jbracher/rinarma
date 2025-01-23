@@ -71,7 +71,7 @@ get_ses_orig <- function (pars, hessian_transformed,
                           family = c("Poisson", "Hermite", "NegBin")) {
 
   # add small value to the diagonal to avoid numerical issues
-  to_solve <- -( hessian_transformed + diag(10^-6, dim(hessian_transformed)[1]))
+  to_solve <- -( hessian_transformed - diag(10^-6, dim(hessian_transformed)[1]))
   cov_raw <- solve(to_solve)
 
   # Extract parameter values
