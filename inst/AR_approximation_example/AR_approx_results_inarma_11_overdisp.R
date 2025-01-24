@@ -1,3 +1,6 @@
+## Script generating the result table of fitting the Hermite and NegBin
+## INARMA(1, 1) using the AR-approximation
+
 library(tidyverse)
 library(xtable)
 

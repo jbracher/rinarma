@@ -1,12 +1,8 @@
 library(tidyverse)
-library(pracma)
-# library(inarma)
-library(devtools)
-load_all("~/Framework_INAR_INGARCH/Codes/Simulations_Baru/rinarma")
-source("inst/AR_approximation_example/AR_approximation_functions.R")  # Load the functions
 
 ##############################################################################
-## Inference for the INARMA(1, 1) model using the approximation by an AR model
+## Inference for the NegBin INARMA(1, 1) model using the approximation by an
+## AR model
 ##############################################################################
 
 # Setup ------------------------------------------------------------------------
@@ -22,11 +18,6 @@ vals_lgt <- c(250, 500, 1000)  # lengths of simulated time series
 
 # Run the loops ----------------------------------------------------------------
 
-# Set a few different starting value in case the optimization does not converge
-start_transformed <- matrix(c(1, 0, 0, 0, 0.2, 1, 1, -0.1, 0.2, -1, -1, -1,
-                              rep(NA, 4)), nrow = 4, ncol = 4, byrow = TRUE)
-colnames(start_transformed) <- c("log_tau", "logit_kappa", "logit_beta",
-                                 "log_psi")
 for (s in 1:3) {  # Loop over the scenarios
 
   # Grab the parameter values
@@ -51,55 +42,14 @@ for (s in 1:3) {  # Loop over the scenarios
       sim <- sim_inarma(tau = tau, kappa = kappa, beta = beta, psi = psi,
                         lgt = lgt, offspring = "binomial", family = "NegBin")
 
-      # Calculate the moment estimates and use it as a starting value for the
-      # optmization in case the previous 3 are bad
-      start <- try(fit_inarma_moments(sim$X, family = "NegBin"))
-
-      if (class(start) == "try-error") {
-        start_transformed[4, ] <- c(log_tau = 0.5, logit_kappa = 0, logit_beta = 0,
-                                    logit_psi = 0)
-      } else {
-        start <- start$coefficients
-        start_transformed[4, ] <- c(
-          log_tau = unname(log(start["tau"])),
-          logit_kappa = unname(log(start["kappa"] / (1 - start["kappa"]))),
-          logit_beta = unname(log(start["beta"] / (1 - start["beta"]))),
-          log_psi = unname(log(start["psi"]))
-        )
-        start_transformed[4, is.nan(start_transformed[4, ]) |
-                            is.infinite(start_transformed[4, ])] <- 0
-      }
-
-      # Refit until we get a non-problematic estimate
-      refit_iter <- 1
-      refit <- TRUE
-      while (refit & refit_iter <= 4) {
-        # Find the (approximate) maximum likelihood estimates
-        op <- optim(
-          par = start_transformed[refit_iter, ],
-          fn = llik_ar_based_11,
-          X = sim$X,
-          family = "NegBin",
-          hessian = TRUE,
-          control = list(fnscale = -1, maxit = 800)  # To change to maximization
-        )
-
-        # Extract and transform the results
-        coeffs <- c(
-          tau = unname(exp(op$par["log_tau"])),
-          kappa = unname(exp(op$par["logit_kappa"]) / (1 + exp(op$par["logit_kappa"]))),
-          beta = unname(exp(op$par["logit_beta"]) / (1 + exp(op$par["logit_beta"]))),
-          psi = unname(exp(op$par["log_psi"]))
-        )
-        ses <- get_ses_orig(op$par, op$hessian, family = "NegBin")
-        refit <- anyNA(ses) | op$convergence != 0
-        refit_iter <- refit_iter + 1
-      }
+      # Find the (approximate) maximum likelihood estimates
+      fit <- fit_inarma_approx(sim$X, family = "NegBin", order = c(p = 1, q = 1),
+                               lag_max = 10)
 
       # Save the results
-      res_11[k, 1:4] <- coeffs
-      res_11[k, 5:8] <- ses
-      conv_11[k] <- op$convergence
+      res_11[k, 1:4] <- fit$coefficients
+      res_11[k, 5:8] <- fit$se
+      conv_11[k] <- fit$convergence
       sims[k, ] <- sim$X
     }
 
