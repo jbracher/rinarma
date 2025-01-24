@@ -16,7 +16,7 @@ psi <- 0.7
 # tau <- 1.5
 # psi <- 0.5
 
-vals_lgt <- c(250, 500, 1000)
+vals_lgt <- c(250, 500, 1000, 2000)
 vals_family <- c("Poisson", "Hermite", "NegBin")
 vals_family_abbrev <- c("pois", "herm", "nbin")
 
