@@ -195,7 +195,7 @@ fit_ingarch <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
     ret$lik_distr <- t(sapply(ret$fitted_values, FUN = dpois, x = 0:round(1.2 * max(observed))))
 
     ret$coefficients <- unlist(coefficients)
-    ret$se <- se
+    ret$se <- unlist(se)
   }
   if(family == "NegBin") {
     coefficients$psi <- as.numeric(exp(ret$coefficients_raw["log_psi"]))
