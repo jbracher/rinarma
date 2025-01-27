@@ -1,6 +1,6 @@
 #' Fitting an INARMA model
 #'
-#' Maximum likelihood inference for INARMA(1,1) model as described in Bracher and Sobolova (2024).
+#' Maximum likelihood inference for INARMA(1,1) model as described in Bracher and Sobolova (2025).
 #' The model is defined as
 #' \deqn{X_t = (1 - \beta) \circ E_t + I_t}
 #' \deqn{E_t = \beta \circ E_{t - 1} + \kappa \bullet X_{t - 1}}
@@ -32,7 +32,7 @@
 #' X <- measles$value
 #' # Note: running the fit takes a little while.
 #' \dontrun{
-#' fit <- fit_inarma(X, family = "Poisson")
+#' fit <- fit_inarma(X, family = "Poisson", offspring = "binomial)
 #' summary(fit)
 #' plot(fit, type = "fit")
 #' }
@@ -317,7 +317,7 @@ fit_inarma <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
   ret$se$mean_E1 <- as.numeric(ret$se_raw["log_mean_E1"]*exp(ret$coefficients_raw["log_mean_E1"])^2)
   ret$se <- unlist(ret$se)
 
-  # adapt nomenclature to paper Bracher and Sobolova (2024)
+  # adapt nomenclature to paper Bracher and Sobolova (2025)
   if(parameterization == "beta"){
     names(ret$coefficients)[names(ret$coefficients) == "phi"] <- "beta"
     ret$coefficients["beta"] <- 1 - ret$coefficients["beta"]
@@ -389,8 +389,8 @@ choose_support <- function(observed, tau, phi, kappa, psi = NULL, family){
   # combination suggests disproportionally large values compared to the
   # observations. This can happen, when the model does not fit the data nicely,
   # e.g. the data generating process is a more general model
-  upper_X <- min(upper_X, upper_observed * 10)
-  upper_E <- min(upper_E, upper_observed * 10)
+  upper_X <- min(upper_X, upper_observed * 10, na.rm = TRUE)
+  upper_E <- min(upper_E, upper_observed * 10, na.rm = TRUE)
 
   return(0:max(upper_X, upper_E, upper_observed))
 }
@@ -449,8 +449,6 @@ choose_support <- function(observed, tau, phi, kappa, psi = NULL, family){
 #' @export
 fit_inar <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
                      offspring = c("binomial", "binomial-Poisson"),
-                     # data_tau = matrix(1, nrow = length(observed), # currently deprecated
-                     #                 dimnames = list(NULL, "Intercept")),
                      start = NULL,
                      return_se = TRUE, control_optim = NULL){
 
@@ -466,54 +464,40 @@ fit_inar <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
   # create starting value for parameter optimization with reasonable names:
   tau_is_time_varying <- ncol(data_tau) > 1 | any(data_tau[, 1] != mean(data_tau))
   if(is.null(start)){
-    start <- c(rep(0, ncol(data_tau)),
-               -1, # kappa
-               if(family %in% c("Hermite", "NegBin")) -1, # psi
-               1) # mean_E1
-    names(start) <- c(colnames(data_tau),
-                      "logit_kappa",
-                      if(family == "NegBin") "log_psi",
-                      if(family == "Hermite") "logit_psi",
-                      "log_mean_E1")
-  }
+    coefficients_moments <- fit_inar_moments(observed, family = family)$coefficients
 
-  coefficients_moments <- fit_inar_moments(observed, family = family)$coefficients
+    # initialize vector of transformed moment estimators (scale used internally)
+    start <- c("log_tau" = NA,
+               "logit_kappa" = NA,
+               "logit_psi" =  if(family == "Hermite") NA,
+               "log_psi" = if(family == "NegBin") NA,
+               "log_mean_E1" = max(0.7, log(observed[1])))
 
-  # initialize vector of transformed moment estimators (scale used internally)
-  start <- c("log_tau" = NA,
-             "logit_kappa" = NA,
-             "logit_psi" =  if(family == "Hermite") NA,
-             "log_psi" = if(family == "NegBin") NA)
-
-  # fill that vector:
-  start["log_tau"] <- log(coefficients_moments["tau"])
-  start["logit_kappa"] <- log(coefficients_moments["kappa"]/(1 - coefficients_moments["kappa"]))
-  if(family == "Hermite"){
-    start["logit_psi"] <- log(coefficients_moments["psi"]/(1 - coefficients_moments["psi"]))
-    if (is.nan(start["logit_psi"])) start["logit_psi"] <- 0
-  }
-  if(family == "NegBin"){
-    start["log_psi"] <- log(coefficients_moments["psi"])
+    # fill that vector:
+    start["log_tau"] <- log(coefficients_moments["tau"])
+    start["logit_kappa"] <- log(coefficients_moments["kappa"]/(1 - coefficients_moments["kappa"]))
+    if(family == "Hermite"){
+      start["logit_psi"] <- log(coefficients_moments["psi"]/(1 - coefficients_moments["psi"]))
+      if (is.nan(start["logit_psi"])) start["logit_psi"] <- 0
+    }
+    if(family == "NegBin"){
+      start["log_psi"] <- log(coefficients_moments["psi"])
+    }
   }
 
   if (offspring == "binomial-Poisson") {
     if (family == "Poisson") {
-      start = c(start, logit_zeta = 0)
+      if (is.null(start)) {
+        start <- c(start, logit_zeta = 0)
+      }
     } else {
       stop("binomial-Poisson thinning implemented for the family = 'Poisson' only.")
     }
   }
 
+
   nllik_vect <- function(pars, return_distr = FALSE){
     lgt <- length(observed)
-
-    beta_tau <- pars[colnames(data_tau)]
-
-    tau <- if(tau_is_time_varying){
-      exp(data_tau %*% beta_tau)
-    }else{
-      exp(beta_tau)
-    }
 
     if (offspring == "binomial") {
       zeta <- 0
@@ -522,24 +506,25 @@ fit_inar <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
     }
     kappa <- exp(pars["logit_kappa"])/(1 + exp(pars["logit_kappa"]))
     tau <- exp(pars["log_tau"])
+    mean_E1 <- exp(pars["log_mean_E1"])
 
     if(family == "Poisson"){
       llik <- -llik_inar_pois(vect = observed, tau = tau, kappa = kappa,
-                                zeta = zeta)
+                                zeta = zeta, mean_E1 = mean_E1)
       return(llik)
     }
 
     if(family == "Hermite"){
       psi <- exp(pars["logit_psi"])/(1 + exp(pars["logit_psi"]))
       llik <- -llik_inar_herm(vect = observed,tau = tau, kappa = kappa,
-                              psi = psi)
+                              psi = psi, mean_E1 = mean_E1)
       return(llik)
     }
 
     if(family == "NegBin"){
       psi <- exp(pars["log_psi"])
       llik <- -llik_inar_negbin(vect = observed, tau = tau, kappa = kappa,
-                                psi = psi)
+                                psi = psi, mean_E1 = mean_E1)
       return(llik)
     }
   }
@@ -550,11 +535,13 @@ fit_inar <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
   # very small overdispersion parameters indicate convergence issues.
   # try to catch these:
   if(family %in% c("Hermite", "NegBin")){
-    estimate_psi <- ifelse(family == "Hermite",
-                           exp(opt$par["logit_psi"])/(1 + exp(opt$par["logit_psi"])),
-                           exp(opt$par["log_psi"]))
+    estimate_psi <- ifelse(
+      family == "Hermite",
+      exp(opt$par["logit_psi"])/(1 + exp(opt$par["logit_psi"])),
+      exp(opt$par["log_psi"])
+    )
 
-    if(estimate_psi < 0.05){
+    if(estimate_psi < 0.05 || is.na(se_psi)){
       message("Very low overdispersion parameter may indicate convergence problems, re-fitting model...")
       start_refit <- opt$par
       if(family == "Hermite") start_refit["logit_psi"] <- 1
@@ -567,9 +554,6 @@ fit_inar <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
 
   ret <- list()
 
-  ret$family <- family
-  ret$offspring <- offspring
-
   # parameter estimates and standard errors:
   ret$coefficients_raw <- opt$par
   ret$se_raw <- ret$cov_raw <- NULL
@@ -579,11 +563,24 @@ fit_inar <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
     ret$se_raw <- sqrt(diag(ret$cov_raw))
   }
 
+  ret$family <- family
+  ret$offspring <- offspring
+
   # parameter estimates on original scale:
   ret$coefficients <-
     list(tau = exp(ret$coefficients_raw["log_tau"]),
          kappa = exp(ret$coefficients_raw["logit_kappa"])/
            (1 + exp(ret$coefficients_raw["logit_kappa"])))
+  ret$se <- list(tau = as.numeric(ret$se_raw["log_tau"]*exp(ret$coefficients_raw["log_tau"])^2),
+                 kappa = as.numeric(ret$se_raw["logit_kappa"]*exp(ret$coefficients_raw["logit_kappa"])/(1 + exp(ret$coefficients_raw["logit_kappa"]))^2),
+                 mean_E1 = as.numeric(ret$se_raw["log_mean_E1"]*exp(ret$coefficients_raw["log_mean_E1"])^2)
+                 )
+
+  if (offspring == "binomial-Poisson") {
+    ret$coefficients$zeta <- as.numeric(exp(ret$coefficients_raw["logit_zeta"])/(1 + exp(ret$coefficients_raw["logit_zeta"]))^2)
+    ret$se$zeta <- as.numeric(ret$se_raw["logit_kappa"]*exp(ret$coefficients_raw["logit_zeta"])/(1 + exp(ret$coefficients_raw["logit_zeta"]))^2)
+  }
+
   if (family == "Poisson") {
     ret$fitted_values <- c(
       observed[1],
@@ -625,6 +622,10 @@ fit_inar <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
   names_coefficients <- names(ret$coefficients)
   ret$coefficients <- unlist(ret$coefficients)
   names(ret$coefficients) <- names_coefficients
+
+  names_se <- names(ret$se)
+  ret$se <- unlist(ret$se)
+  names(ret$se) <- names_se
 
   ret$observed <- observed
   # to get fitted values:
