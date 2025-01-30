@@ -570,7 +570,9 @@ fit_inar <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
   ret$coefficients <-
     list(tau = exp(ret$coefficients_raw["log_tau"]),
          kappa = exp(ret$coefficients_raw["logit_kappa"])/
-           (1 + exp(ret$coefficients_raw["logit_kappa"])))
+           (1 + exp(ret$coefficients_raw["logit_kappa"])),
+         mean_E1 = exp(ret$coefficients_raw["log_mean_E1"])
+         )
   ret$se <- list(tau = as.numeric(ret$se_raw["log_tau"]*exp(ret$coefficients_raw["log_tau"])^2),
                  kappa = as.numeric(ret$se_raw["logit_kappa"]*exp(ret$coefficients_raw["logit_kappa"])/(1 + exp(ret$coefficients_raw["logit_kappa"]))^2),
                  mean_E1 = as.numeric(ret$se_raw["log_mean_E1"]*exp(ret$coefficients_raw["log_mean_E1"])^2)
