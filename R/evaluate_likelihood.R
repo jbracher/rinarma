@@ -400,7 +400,7 @@ llik_inarma_negbin <- function(vect, distr_E1 = NULL, tau, phi, psi, kappa,
 #' @param vect the vector of observed values
 #' @param tau,kappa,zeta parameters of the Poisson INAR(1) model
 #' @return log-likelihood
-llik_inar_pois <- function(vect, tau, kappa, zeta){
+llik_inar_pois <- function(vect, tau, kappa, zeta, mean_E1){
 
   lgt <- length(vect)
   p <- kappa * (1 - zeta)
@@ -413,6 +413,16 @@ llik_inar_pois <- function(vect, tau, kappa, zeta){
           dpois(x[2] - 0:min(x), tau + x[1] * zeta * kappa))
   })))
 
+  # Add log(P(X_1 = x1)) = log(sum(P(E1 = e1) * P(X_1 = x1| E_1 = e1)))
+  support <- choose_support(observed = vect, tau = tau, phi = 1, kappa = kappa, psi = 0,
+                 family = "Poisson")
+  llik <- llik +
+    log(sum(dpois(support, mean_E1) * # P(E1 = e1)
+    sapply(support, function (x) { # P(X1 = x1 | E1 = e1)
+      sum(dbinom(0:min(vect[1], x), size = x, prob = kappa * (1 - zeta)) *
+            dpois(vect[1] - 0:min(vect[1], x), tau + x * zeta * kappa))
+    })))
+
   return(llik)
 }
 
@@ -423,7 +433,7 @@ llik_inar_pois <- function(vect, tau, kappa, zeta){
 #' @param tau,kappa,beta,psi parameters of the Negative binomial
 #' INAR(1) model in the thinning-based formulation
 #' @return log-likelihood
-llik_inar_negbin <- function(vect, tau, kappa, psi){
+llik_inar_negbin <- function(vect, tau, kappa, psi, mean_E1){
   lgt <- length(vect)
 
   # Bind the observations and their lagged series into a matrix
@@ -434,6 +444,14 @@ llik_inar_negbin <- function(vect, tau, kappa, psi){
     sum(dbinom(0:min(x), size = x[1], prob = kappa) *
           dnbinom(x[2] - 0:min(x), mu = tau, size = 1 / psi))
   })))
+
+  log(sum(dnbinom(support, mu = mean_E1, size = 1 / psi) * # P(E1 = e1)
+            sapply(support, function (x) { # P(X1 = x1 | E1 = e1)
+              sum(dbinom(0:min(vect[1], x), size = x, prob = kappa) *
+                    dpois(vect[1] - 0:min(vect[1], x), tau + x * kappa))
+            })))
+
+
   return(llik)
 }
 
@@ -442,7 +460,7 @@ llik_inar_negbin <- function(vect, tau, kappa, psi){
 #' @param tau,kappa,beta,psi parameters of the Hermite INAR(1) model in the
 #' thinning-based formulation
 #' @return log-likelihood
-llik_inar_herm <- function(vect, tau, kappa, psi){
+llik_inar_herm <- function(vect, tau, kappa, psi, mean_E1){
 
   lgt <- length(vect)
 
@@ -455,6 +473,16 @@ llik_inar_herm <- function(vect, tau, kappa, psi){
     sum(dbinom(0:min(x), size = x[1], prob = kappa) *
           dherm(x[2] - 0:min(x), mu = tau, psi = psi))
   })))
+
+  # Add log(P(X_1 = x1)) = log(sum(P(E1 = e1) * P(X_1 = x1| E_1 = e1)))
+  support <- choose_support(observed = vect, tau = tau, phi = 1, kappa = kappa, psi = 0,
+                            family = "Poisson")
+  llik <- llik +
+    log(sum(dherm(support, mu = mean_E1, psi = psi) * # P(E1 = e1)
+              sapply(support, function (x) { # P(X1 = x1 | E1 = e1)
+                sum(dbinom(0:min(vect[1], x), size = x, prob = kappa) *
+                      dpois(vect[1] - 0:min(vect[1], x), tau + x * kappa))
+              })))
 
   return(llik)
 }
