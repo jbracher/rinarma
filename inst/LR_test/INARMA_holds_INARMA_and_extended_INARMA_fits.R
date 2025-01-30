@@ -1,19 +1,17 @@
-library(devtools)
-load_all()
-
-# define true values for the three scenarios:
-vals_tau <- c(1, 1, 1)
-vals_beta <- c(0.5, 0.2, 0.1)
-vals_kappa <- c(0.5, 0.6, 0.8)
-vals_zeta <- c(0.2, 0.5, 0.8)
+# Script fitting the INARMA model against the extended INARMA model, while
+# INARMA holds, i.e.
+# H0: zeta = 0 vs. H1: zeta > 0
 
 vals_lgt <- c(250, 500, 1000) # lengths of simulated time series
 n_sim <- 1000 # number of simulation runs
 
 # Keep track of scenarios and lengths that are done
 # Needs to be changed manually, when selecting scenarios and lengths
-progress_log <- expand.grid(scenario = 1:3, lgt = vals_lgt, already_done = FALSE,
-                            continue = FALSE)
+progress_log <- expand.grid(scenario = 1:3, lgt = vals_lgt,
+                            already_done = FALSE, continue = FALSE)
+
+# If only a subset of the simulations is supposed to be run, change the
+# `progress_log` variable manually now, before running the rest of the script
 
 sims_to_run <- 1:9
 sims_to_run <- sims_to_run[!(progress_log$already_done)]
@@ -30,17 +28,20 @@ colnames(start_transformed) <- c("tau.Intercept", "logit_kappa", "logit_phi",
 
 for (i in sims_to_run) {
 
-  continue <- progress_log$continue[i] # should existing results be read (to take up after error)
+  # should existing results be read (to take up after error)
+  continue <- progress_log$continue[i]
+
+  # grab the scenario number an the series length
   s <- progress_log$scenario[i]
   lgt <- progress_log$lgt[i]
 
   # run simulation:
   print(paste0("Started scenario ", s, " length ", lgt, "."))
 
-  # grab true parameter values:
-  tau <- vals_tau[s]
-  beta <- vals_beta[s]
-  kappa <- vals_kappa[s]
+  # Load the simulated trajectories
+  dat <- unname(as.matrix(read.csv(
+    paste0("inst/Simulation_trajectories/sim_INARMA11_s", s, "_lgt_", lgt, "_pois.csv")
+  )))
 
   # initialize matrix to store results:
   # get existing results if desired (if simulation somehow failed halfway)
@@ -52,10 +53,6 @@ for (i in sims_to_run) {
     res_null <- read.csv(
       paste0("inst/LR_test/Results/H0_INARMA_holds_results_null_s", s, "_", lgt,
              ".csv")
-    )
-    dat <- unname(read.csv(
-      paste0("inst/LR_test/Results/pois_sim_", tau, "_", beta, "_", kappa, "_", lgt,
-             ".csv"))
     )
     inds_to_run <- Position(res$kappa, f = is.na):n_sim
   } else {
@@ -82,15 +79,10 @@ for (i in sims_to_run) {
       max_lik = rep(NA, n_sim),
       convergence = rep(NA, n_sim)
     )
-    dat <- matrix(nrow = n_sim, ncol = lgt)
   }
 
   # Simulate
   for (k in inds_to_run) {
-    # Generate the data
-    set.seed(k)
-    dat[k, ] <- sim_inarma(beta = beta, kappa = kappa, tau = tau, lgt = lgt,
-                           family = "Poisson", offspring = "binomial")$X
 
     # Get the moment estimates
     mom_ests <- fit_inarma_moments(as.numeric(dat[k, ]), family = "Poisson")
@@ -108,7 +100,7 @@ for (i in sims_to_run) {
     refit <- TRUE
     while (refit & refit_iter <= 4) {
 
-      # Find the maximum likelihood estimates
+      # Fit INARMA
       op_null <- fit_inarma(
         as.numeric(dat[k, ]),
         family = "Poisson",
@@ -123,19 +115,20 @@ for (i in sims_to_run) {
       refit_iter <- refit_iter + 1
     }
 
-    print(paste0("Null refitted: ", refit_iter - 2, " times."))
-    # Fit the alternative model
+  #  print(paste0("Null refitted: ", refit_iter - 2, " times."))
+
+    # Fit the extended INARMA
     op <- fit_inarma(as.numeric(dat[k, ]), family = "Poisson",
-                     start = c(op_null$coefficients_raw, logit_zeta = 0),
+                     start = c(op_null$coefficients_raw, logit_zeta = 0, log_mean_E1 = 1),
                      offspring = "binomial-Poisson", return_se = TRUE,
                      control_optim = list(maxit = 1000))
 
-    # Refit the alternative (big) model until we get a non-problematic estimate
+    # Refit the extended INARMA model until we get a non-problematic estimate
     refit_iter <- 1
     refit <- op$optim$convergence != 0
     while (refit & refit_iter <= 4) {
 
-      # Find the maximum likelihood estimates
+      # (Re)fit the extended INARMA
       op <- fit_inarma(as.numeric(dat[k, ]), family = "Poisson",
                        start = start_transformed[refit_iter,],
                        offspring = "binomial-Poisson", return_se = TRUE,
@@ -145,7 +138,7 @@ for (i in sims_to_run) {
       refit <- op$optim$convergence != 0
       refit_iter <- refit_iter + 1
     }
-    print(paste0("Alternative refitted: ", refit_iter - 1, " times."))
+ #   print(paste0("Alternative refitted: ", refit_iter - 1, " times."))
 
     res$max_lik[k] <- op$loglikelihood
     res_null$max_lik[k] <- op_null$loglikelihood
@@ -159,12 +152,10 @@ for (i in sims_to_run) {
     # Store the results every 10 iterations
     if (k %% 10 == 0) {
       print(paste0("Finished iteration: ", k, "."))
-      write.csv(res, file = paste0("inst/LR_test/Results/H0_INARMA_holds_results_s", s, "_", lgt, ".csv"),
+      write.csv(res, file = paste0("inst/LR_test/Results/extended_INARMA_fits_INARMA_holds_s", s, "_", lgt, ".csv"),
                 row.names = FALSE)
-      write.csv(res_null, file = paste0("inst/LR_test/Results/H0_INARMA_holds_results_null_s", s, "_", lgt, ".csv"),
+      write.csv(res_null, file = paste0("inst/LR_test/Results/INARMA_fits_INARMA_holds_s", s, "_", lgt, ".csv"),
                 row.names = FALSE)
-      write.csv(dat, file = paste0("inst/LR_test/Results/pois_sim_", tau, "_", beta, "_",
-                                   kappa, "_", lgt, ".csv"), row.names = FALSE)
     }
   }
   progress_log$already_done[i] <- TRUE
