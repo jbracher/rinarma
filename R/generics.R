@@ -1,4 +1,4 @@
-#' Summarize an INARMA(1, 1) model fit
+#' Summarize an INARMA(p, q) model fit
 #'
 #' @param model the model fit (an object of class `"inarma"`).
 #' @export
@@ -18,7 +18,7 @@ summary.inarma <- function(model){
       cat("Summarizing an INAR(1) model with family =", model$family,
           "and offspring =", model$offspring, "\n \n")
     } else {
-      cat("Summarizing an INARMA(1, 1) model with family =", model$family,
+      cat("Summarizing an INARMA(", model$order["p"], ",", model$order["q"] , ") model with family =", model$family,
           "and offspring =", model$offspring, "\n \n")
     }
   }
@@ -47,7 +47,7 @@ summary.inarma <- function(model){
     print(model$se)
     cat("\n")
     cat("Number of observations used for fitting:", model$nobs, "\n")
-    cat("AIC:", model$AIC, "\n")
+    cat("AIC (approximate):", model$AIC, "\n")
     convergence_code <- model$optim$convergence
     convergence_text <- ifelse(convergence_code == 0, "successful", "failed")
     cat("\n")
@@ -55,7 +55,7 @@ summary.inarma <- function(model){
   }
 }
 
-#' Print an INARMA(1, 1) model fit
+#' Print an INARMA(p, q) model fit
 #'
 #' @param model the model fit (an object of class `"inarma"`).
 #' @export
@@ -63,7 +63,7 @@ print.inarma <- function(model){
   summary(model) #re-use summary function.
 }
 
-#' Get AIC of an INARMA(1, 1) model
+#' Get AIC of an INARMA(p, q) model
 #' @param model the model (an object of class `"inarma"`)
 #' @export
 AIC.inarma <- function(model){
@@ -74,7 +74,7 @@ AIC.inarma <- function(model){
   }
 }
 
-#' Get fitted values of an INARMA(1, 1) model
+#' Get fitted values of an INARMA(p, q) model
 #' @param model the model (an object of class `"inarma"`)
 #' @export
 fitted.inarma <- function(model){
