@@ -48,15 +48,15 @@ for (i in sims_to_run) {
   # get existing results if desired (if simulation somehow failed halfway)
   if (continue) {
     res <- read.csv(
-      paste0("inst/LR_test/Results/H1_extended_INARMA_holds_results_s", s, "_", lgt,
+      paste0("inst/LR_test/Results/extended_INARMA_fits_extended_INARMA_holds_s", s, "_", lgt,
              ".csv")
     )
     res_null <- read.csv(
-      paste0("inst/LR_test/Results/H1_extended_INARMA_holds_results_null_s", s, "_", lgt,
+      paste0("inst/LR_test/Results/INARMA_fits_extended_INARMA_holds_s", s, "_", lgt,
              ".csv")
     )
     res_ingarch <- read.csv(
-      paste0("inst/LR_test/Results/H1_extended_INARMA_holds_results_ingarch_s", s, "_", lgt,
+      paste0("inst/LR_test/Results/INGARCH_fits_extended_INARMA_holds_s", s, "_", lgt,
              ".csv")
     )
     inds_to_run <- Position(res$kappa, f = is.na):n_sim
