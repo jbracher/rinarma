@@ -1,3 +1,4 @@
+library(tidyverse)
 
 # function to find mean of normal for which the p-quantile equals 0:
 find_mean_of_normal <- function(p, min = -2, max = 2){
@@ -50,39 +51,45 @@ alpha <- c(0.05, 0.1, 0.2)
 
 
 vals_lgt <- c(250, 500, 1000)
+vals_true_model <- c("INARMA", "extended_INARMA", "INGARCH")
 
-for (s in 1:3) {
-  for (lgt in vals_lgt) {
+for (true_model in vals_true_model) {  # Loop over true data generating processes
+  for (s in 1:3) {  # Loop over scenarios
+    for (lgt in vals_lgt) {  # Loop over lengths
 
-    # get in results
-    res_null <- read.csv(paste0("inst/LR_test/Results/H0_INARMA_holds_results_null_s", s, "_", lgt,".csv"))
-    res <- read.csv(paste0("inst/LR_test/Results/H0_INARMA_holds_results_s", s, "_", lgt, ".csv"))
+      # get in results
+      res_null <- read.csv(paste0("inst/LR_test/Results/INARMA_fits_", true_model, "_holds_s", s, "_", lgt,".csv"))
 
-    # to store corrected thresholds:
-    corrected_thresholds <- as.data.frame(
-      matrix(nrow = nrow(res), ncol = length(alpha),
-             dimnames = list(NULL, as.character(paste0("critical_", alpha))))
-    )
+      # to store corrected thresholds:
+      corrected_thresholds <- as.data.frame(
+        matrix(nrow = nrow(res_null), ncol = length(alpha),
+               dimnames = list(NULL, as.character(paste0("critical_", alpha))))
+      )
 
-    for(k in 1:nrow(res)){  # run through iterations:
+      for(k in 1:nrow(res_null)){  # Loop over iterations
 
-      # grab fitted parameters
-      tau <- res_null$tau[k]
-      kappa <- res_null$kappa[k]
-      beta <- res_null$beta[k]
+        # grab fitted parameters
+        tau <- res_null$tau[k]
+        kappa <- res_null$kappa[k]
+        beta <- res_null$beta[k]
 
-      # compute corrected threshold:
-      corrected_thresholds[k, ] <- correct_threshold_INARMA(tau, beta, kappa, n_sim = 500, alpha = alpha)$critical_corrected
+        # compute corrected threshold:
+        if (anyNA(c(tau, kappa, beta))) {
+          corrected_thresholds[k, ] <- NA
+        } else {
+          corrected_thresholds[k, ] <- correct_threshold_INARMA(tau, beta, kappa, n_sim = 500, alpha = alpha)$critical_corrected
+        }
 
-      if (k %% 20 == 0) {
-        print(paste0("Finished iteration ", k))
+        if (k %% 20 == 0) {
+          print(paste0("Finished iteration ", k))
+        }
       }
-    }
 
-    # save the corrected thresholds
-    write_csv(
-      corrected_thresholds,
-      file = paste0("inst/LR_test/Results/H0_INARMA_holds_correct_thresholds_s", s, "_", lgt,".csv")
-    )
+      # save the corrected thresholds
+      write_csv(
+        corrected_thresholds,
+        file = paste0("inst/LR_test/Results/", true_model, "_holds_correct_thresholds_s", s, "_", lgt,".csv")
+      )
+    }
   }
 }
