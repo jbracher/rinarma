@@ -31,10 +31,10 @@ scenario_temp <- matrix(
   dimnames = list(
     c(250, 500, 1000, 2000),
     c("T", "tau", "mean_tau", "se_tau", "est_se_tau",
+      "psi", "mean_psi", "se_psi", "est_se_psi",
       "beta", "mean_beta", "se_beta", "est_se_beta",
       "kappa1", "mean_kappa1", "se_kappa1", "est_se_kappa1",
-      "kappa2", "mean_kappa2", "se_kappa2", "est_se_kappa2",
-      "psi", "mean_psi", "se_psi", "est_se_psi")
+      "kappa2", "mean_kappa2", "se_kappa2", "est_se_kappa2")
   )
 )
 
@@ -66,12 +66,12 @@ for (lgt in vals_lgt) {
   good <- setdiff(1:n_sim, problematic)
 
   # Aggregate
-  scenario_temp[as.character(lgt), c("mean_tau", "mean_beta", "mean_kappa1", "mean_kappa2", "mean_psi")] <-
-    apply(res[good, c("tau", "beta", "kappa1", "kappa2", "psi")], 2, mean)
-  scenario_temp[as.character(lgt), c("se_tau", "se_beta", "se_kappa1", "se_kappa2", "se_psi")] <-
-    apply(res[good, c("tau", "beta", "kappa1", "kappa2", "psi")], 2, sd)
-  scenario_temp[as.character(lgt), c("est_se_tau", "est_se_beta", "est_se_kappa1", "est_se_kappa2", "est_se_psi")] <-
-    apply(res[good, c("tau_se", "beta_se", "kappa1_se", "kappa2_se", "psi_se")], 2, mean)
+  scenario_temp[as.character(lgt), c("mean_tau", "mean_psi", "mean_beta", "mean_kappa1", "mean_kappa2")] <-
+    apply(res[good, c("tau", "psi", "beta", "kappa1", "kappa2")], 2, mean)
+  scenario_temp[as.character(lgt), c("se_tau", "se_psi", "se_beta", "se_kappa1", "se_kappa2")] <-
+    apply(res[good, c("tau", "psi", "beta", "kappa1", "kappa2")], 2, sd)
+  scenario_temp[as.character(lgt), c("est_se_tau", "est_se_psi", "est_se_beta", "est_se_kappa1", "est_se_kappa2")] <-
+    apply(res[good, c("tau_se", "psi_se", "beta_se", "kappa1_se", "kappa2_se")], 2, mean)
 }
 
 # Format the results

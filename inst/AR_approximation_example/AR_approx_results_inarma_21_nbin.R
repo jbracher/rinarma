@@ -31,10 +31,10 @@ scenario_temp <- matrix(
   dimnames = list(
     c(250, 500, 1000, 2000),
     c("T", "tau", "mean_tau", "se_tau", "est_se_tau",
+      "psi", "mean_psi", "se_psi", "est_se_psi",
       "beta", "mean_beta", "se_beta", "est_se_beta",
       "kappa1", "mean_kappa1", "se_kappa1", "est_se_kappa1",
-      "kappa2", "mean_kappa2", "se_kappa2", "est_se_kappa2",
-      "psi", "mean_psi", "se_psi", "est_se_psi")
+      "kappa2", "mean_kappa2", "se_kappa2", "est_se_kappa2")
   )
 )
 
