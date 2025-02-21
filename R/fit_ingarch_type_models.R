@@ -76,6 +76,8 @@
 #' \item{observed}{the vector of observed values provided by the user.}
 #' \item{fitted_values}{the fitted values as obtained from `lik_distr`}
 #' \item{pearson_residuals}{the Pearson residuals}
+#' \item{psi}{estimate and standard error of the parameter \eqn{\psi} from the
+#'  GLM-formulation of the INARCH model. Included for making the transitions between the two formulations easier.}
 #' \item{dim}{the number of fitted parameters}
 #' \item{loglikelihood}{the log-likelihood of the fitted model}
 #' \item{AIC}{the resulting AIC}
@@ -193,7 +195,7 @@ fit_ingarch <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
 
     ret$fitted_variance <- ret$fitted_values
     ret$lik_distr <- t(sapply(ret$fitted_values, FUN = dpois, x = 0:round(1.2 * max(observed))))
-
+    ret$psi <- NA
     ret$coefficients <- unlist(coefficients)
     ret$se <- unlist(se)
   }
@@ -214,7 +216,7 @@ fit_ingarch <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
         )
       )
     ret$fitted_variance <- ret$fitted_values * (1 + coefficients$psi)
-
+    ret$psi <- c(coefficients["psi"], se_psi = unname(se["psi"]))
     ret$coefficients <- unlist(coefficients[c("tau", "beta", "kappa", "theta", "mean_E1")])
     ret$se <- unlist(se[c("tau", "beta", "kappa", "theta", "mean_E1")])
   }
@@ -237,13 +239,13 @@ fit_ingarch <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
         ret$fitted_values, FUN = function (x) {dherm(0:round(1.2 * max(observed)), mu = x, psi = coefficients$psi)}
       )
     )
-
+    ret$psi <- c(coefficients["psi"], se_psi = unname(se["psi"]))
     ret$coefficients <- unlist(coefficients[c("tau", "beta", "kappa", "theta", "mean_E1")])
     ret$se <- unlist(se[c("tau", "beta", "kappa", "theta", "mean_E1")])
     }
 
   # compute residuals
-  ret$pearson_residuals <- (observed - ret$fitted_values) / sqrt(ret$fitted_values)
+  ret$pearson_residuals <- (observed - ret$fitted_values) / sqrt(ret$fitted_variance)
 
   # other:
   ret$observed <- observed
@@ -294,6 +296,8 @@ fit_ingarch <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
 #' \item{observed}{the vector of observed values provided by the user.}
 #' \item{fitted_values}{the fitted values as obtained from `lik_distr`}
 #' \item{pearson_residuals}{the Pearson residuals}
+#' \item{psi}{estimate and standard error of the parameter \eqn{\psi} from the
+#'  GLM-formulation of the INARCH model. Included for making the transitions between the two formulations easier.}
 #' \item{dim}{the number of fitted parameters}
 #' \item{loglikelihood}{the log-likelihood of the fitted model}
 #' \item{AIC}{the resulting AIC}
@@ -406,7 +410,7 @@ fit_inarch <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
 
     ret$lik_distr <- t(sapply(ret$fitted_values, FUN = dpois, x = 0:round(1.2 * max(observed))))
     ret$fitted_variance <- ret$fitted_values
-
+    ret$psi <- NA
     ret$coefficients <- unlist(coefficients)
     ret$se <- unlist(se)
   }
@@ -425,7 +429,7 @@ fit_inarch <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
     get_theta <- get_cluster_size(coefficients$psi, se$psi, family = "NegBin")
     coefficients$theta <- get_theta$theta
     se$theta <- get_theta$theta_se
-
+    ret$psi <- c(coefficients["psi"], se_psi = unname(se["psi"]))
     ret$coefficients <- unlist(coefficients[c("tau", "kappa", "theta", "mean_E1")])
     ret$se <- unlist(se[c("tau", "kappa", "theta", "mean_E1")])
   }
@@ -445,7 +449,7 @@ fit_inarch <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
     ret$lik_distr <- dherm(0:1.2 * max(observed), mu = ret$fitted_values,
                            psi = coefficients$psi)
     ret$fitted_variance <- ret$fitted_values * (1 + coefficients$psi)
-
+    ret$psi <- c(coefficients["psi"], se_psi = unname(se["psi"]))
     ret$coefficients <- unlist(coefficients[c("tau",  "kappa", "theta", "mean_E1")])
     ret$se <- unlist(se[c("tau", "kappa", "theta", "mean_E1")])
   }
