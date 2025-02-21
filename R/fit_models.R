@@ -675,10 +675,14 @@ fit_inar <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
   names(ret$se) <- names_se
 
   ret$observed <- observed
-  # to get fitted values:
+  # Pearson residuals:
 
+  ret$fitted_values <- colSums((t(lik_distr)*(seq_along(lik_distr[1, ]) - 1)))
+  ret$fitted_variance <- colSums((t(lik_distr)*(seq_along(lik_distr[1, ]) - 1)^2)) - ret$fitted_values^2
+  ret$pearson_residuals <- (observed - ret$fitted_values)/sqrt(ret$fitted_variance)
 
   # other:
+  ret$lik_distr = lik_distr
   ret$dim <- length(ret$coefficients)
   ret$loglikelihood <- -opt$value
   ret$AIC <- 2*(-ret$loglikelihood + ret$dim)
