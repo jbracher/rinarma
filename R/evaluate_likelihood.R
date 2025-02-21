@@ -51,9 +51,6 @@ tm_A_to_E_bulk <- function (vect, kappa, zeta, support_E, offspring) {
 #' @param support_E the chosen support for E
 #' @return a matrix containing transition probabilities (values of A in rows, of E in columns)
 tm_A_to_E <- function(vect0, X_tminus1, support_A, support_E){
-  # THIS FUNCTION IS POTENTIALLY CALLED MORE OFTEN THAN NEEDED, ESPECIALLY FOR
-  # LOW VALUES OF OBSERVED DATA AND LONG DATA SERIES, AN ALTERNATIVE WOULD
-  # BE TO STORE ALL TRANSITION MARICES IN ADVANCE
 
   # the required matrix actually looks the same in all rows, just shifted
   # the vector of probabilities which needs to be re-used in each row
@@ -445,11 +442,15 @@ llik_inar_negbin <- function(vect, tau, kappa, psi, mean_E1){
           dnbinom(x[2] - 0:min(x), mu = tau, size = 1 / psi))
   })))
 
-  log(sum(dnbinom(support, mu = mean_E1, size = 1 / psi) * # P(E1 = e1)
-            sapply(support, function (x) { # P(X1 = x1 | E1 = e1)
-              sum(dbinom(0:min(vect[1], x), size = x, prob = kappa) *
-                    dpois(vect[1] - 0:min(vect[1], x), tau + x * kappa))
-            })))
+  # Add log(P(X_1 = x1)) = log(sum(P(E1 = e1) * P(X_1 = x1| E_1 = e1)))
+  support <- choose_support(observed = vect, tau = tau, phi = 1, kappa = kappa,
+                            psi = psi, family = "NegBin")
+  llik <- llik +
+    log(sum(dnbinom(support, mu = mean_E1, size = 1 / psi) * # P(E1 = e1)
+              sapply(support, function (x) { # P(X1 = x1 | E1 = e1)
+                sum(dbinom(0:min(vect[1], x), size = x, prob = kappa) *
+                      dnbinom(vect[1] - 0:min(vect[1], x), mu = tau, size = 1 / psi))
+              })))
 
 
   return(llik)
@@ -475,13 +476,13 @@ llik_inar_herm <- function(vect, tau, kappa, psi, mean_E1){
   })))
 
   # Add log(P(X_1 = x1)) = log(sum(P(E1 = e1) * P(X_1 = x1| E_1 = e1)))
-  support <- choose_support(observed = vect, tau = tau, phi = 1, kappa = kappa, psi = 0,
-                            family = "Poisson")
+  support <- choose_support(observed = vect, tau = tau, phi = 1, kappa = kappa, psi = psi,
+                            family = "Hermite")
   llik <- llik +
     log(sum(dherm(support, mu = mean_E1, psi = psi) * # P(E1 = e1)
               sapply(support, function (x) { # P(X1 = x1 | E1 = e1)
                 sum(dbinom(0:min(vect[1], x), size = x, prob = kappa) *
-                      dpois(vect[1] - 0:min(vect[1], x), tau + x * kappa))
+                      dherm(vect[1] - 0:min(vect[1], x), mu = tau, psi = psi))
               })))
 
   return(llik)
