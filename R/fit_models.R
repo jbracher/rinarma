@@ -241,7 +241,7 @@ fit_inarma <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
       if(family == "NegBin") start_refit["log_psi"] <- 1
 
       opt <- optim(par = start_refit, fn = nllik_vect, return_distr = FALSE,
-                   hessian = return_se, control = control_optim)
+                   offspring = offspring, hessian = return_se, control = control_optim)
     }
   }
   # for(i in 1:3){
@@ -496,7 +496,7 @@ fit_inar <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
   }
 
 
-  nllik_vect <- function(pars, return_distr = FALSE){
+  nllik_vect <- function(pars, offspring, return_distr = FALSE){
     lgt <- length(observed)
 
     if (offspring == "binomial") {
@@ -530,7 +530,7 @@ fit_inar <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
   }
 
   opt <- optim(par = start, fn = nllik_vect, hessian = return_se,
-               control = control_optim)
+               control = control_optim, offspring = offspring)
 
   # very small overdispersion parameters indicate convergence issues.
   # try to catch these:
@@ -541,6 +541,12 @@ fit_inar <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
       exp(opt$par["log_psi"])
     )
 
+    se_psi <- ifelse(
+      family == "Hermite",
+      opt$hessian["logit_psi", "logit_psi"] * exp(opt$par["logit_psi"]) / (1 + exp(opt$par["logit_psi"]))^2,
+      opt$hessian["log_psi", "log_psi"] * exp(opt$par["log_psi"])^2
+    )
+
     if(estimate_psi < 0.05 || is.na(se_psi)){
       message("Very low overdispersion parameter may indicate convergence problems, re-fitting model...")
       start_refit <- opt$par
@@ -548,7 +554,7 @@ fit_inar <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
       if(family == "NegBin") start_refit["log_psi"] <- 1
 
       opt <- optim(par = start_refit, fn = nllik_vect, hessian = return_se,
-                   control = control_optim)
+                   control = control_optim, offspring = offspring)
     }
   }
 
@@ -580,43 +586,82 @@ fit_inar <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
 
   if (offspring == "binomial-Poisson") {
     ret$coefficients$zeta <- as.numeric(exp(ret$coefficients_raw["logit_zeta"])/(1 + exp(ret$coefficients_raw["logit_zeta"]))^2)
-    ret$se$zeta <- as.numeric(ret$se_raw["logit_kappa"]*exp(ret$coefficients_raw["logit_zeta"])/(1 + exp(ret$coefficients_raw["logit_zeta"]))^2)
+    ret$se$zeta <- as.numeric(ret$se_raw["logit_zeta"]*exp(ret$coefficients_raw["logit_zeta"])/(1 + exp(ret$coefficients_raw["logit_zeta"]))^2)
   }
 
   if (family == "Poisson") {
-    ret$fitted_values <- c(
-      observed[1],
-      ret$coefficients$tau + ret$coefficients$kappa * observed[-length(observed)]
+    # ret$fitted_values <- c(
+    #   observed[1],
+    #   ret$coefficients$tau + ret$coefficients$kappa * observed[-length(observed)]
+    #   )
+    # ret$fitted_variance <- ret$fitted_values
+    # ret$lik_distr <- t(sapply(ret$fitted_values, FUN = dpois, x = 0:round(1.2 * max(observed))))
+    lik_distr <- llik_inarma_pois(
+      observed,
+      tau = ret$coefficients$tau,
+      kappa = ret$coefficients$kappa,
+      phi = 1,
+      zeta = ifelse(offspring == "binomial", 0, ret$coefficients$zeta),
+      offspring = offspring,
+      support = choose_support(observed, tau = ret$coefficients$tau, phi = 1,
+                               kappa = ret$coefficients$kappa, family = "Poisson"),
+      return_distr = TRUE
       )
-    ret$fitted_variance <- ret$fitted_values
-    ret$lik_distr <- t(sapply(ret$fitted_values, FUN = dpois, x = 0:round(1.2 * max(observed))))
   }
   if(family == "NegBin") {
     ret$coefficients$psi <- exp(ret$coefficients_raw["log_psi"])
-    ret$fitted_values <- c(
-      observed[1],
-      ret$coefficients$tau + ret$coefficients$kappa * observed[-length(observed)]
-    )
-    ret$fitted_variance <- ret$fitted_values * (1 + ret$coefficients$psi)
-    ret$lik_distr <- t(
-      sapply(
-        ret$fitted_values,
-        FUN = function (x) {dnbinom(0:round(1.2 * max(observed)), mu = x, size = 1 / ret$coefficients$psi)}
-      )
+    ret$se$psi <- as.numeric(ret$se_raw["log_psi"] * exp(ret$coefficients_raw["log_psi"])^2)
+    # ret$fitted_values <- c(
+    #   observed[1],
+    #   ret$coefficients$tau + ret$coefficients$kappa * observed[-length(observed)]
+    # )
+    # ret$fitted_variance <- ret$fitted_values * (1 + ret$coefficients$psi)
+    # ret$lik_distr <- t(
+    #   sapply(
+    #     ret$fitted_values,
+    #     FUN = function (x) {dnbinom(0:round(1.2 * max(observed)), mu = x, size = 1 / ret$coefficients$psi)}
+    #   )
+    # )
+    lik_distr <- llik_inarma_negbin(
+      observed,
+      tau = ret$coefficients$tau,
+      kappa = ret$coefficients$kappa,
+      psi = ret$coefficients$psi,
+      phi = 1,
+      zeta = ifelse(offspring == "binomial", 0, ret$coefficients$zeta),
+      offspring = offspring,
+      support = choose_support(observed, tau = ret$coefficients$tau, phi = 1,
+                               psi = ret$coefficients$psi,
+                               kappa = ret$coefficients$kappa, family = "NegBin"),
+      return_distr = TRUE
     )
   }
   if(family == "Hermite") {
     ret$coefficients$psi <- exp(ret$coefficients_raw["logit_psi"])/(1 + exp(ret$coefficients_raw["logit_psi"]))
-    ret$fitted_values <- c(
-      observed[1],
-      ret$coefficients$tau + ret$coefficients$kappa * observed[-length(observed)]
-    )
-    ret$fitted_variance <- ret$fitted_values * (1 + ret$coefficients$psi)
-    ret$lik_distr <- t(
-      sapply(
-        ret$fitted_values,
-        FUN = function (x) {dherm(0:round(1.2 * max(observed)), mu = x, psi = ret$coefficients$psi)}
-      )
+    ret$se$psi <- as.numeric(ret$se_raw["logit_psi"] * exp(ret$coefficients_raw["logit_psi"]) / (1 + exp(ret$coefficients_raw["logit_psi"]))^2)
+    # ret$fitted_values <- c(
+    #   observed[1],
+    #   ret$coefficients$tau + ret$coefficients$kappa * observed[-length(observed)]
+    # )
+    # ret$fitted_variance <- ret$fitted_values * (1 + ret$coefficients$psi)
+    # ret$lik_distr <- t(
+    #   sapply(
+    #     ret$fitted_values,
+    #     FUN = function (x) {dherm(0:round(1.2 * max(observed)), mu = x, psi = ret$coefficients$psi)}
+    #   )
+    # )
+    lik_distr <- llik_inarma_herm(
+      observed,
+      tau = ret$coefficients$tau,
+      kappa = ret$coefficients$kappa,
+      psi = ret$coefficients$psi,
+      phi = 1,
+      zeta = ifelse(offspring == "binomial", 0, ret$coefficients$zeta),
+      offspring = offspring,
+      support = choose_support(observed, tau = ret$coefficients$tau, phi = 1,
+                               psi = ret$coefficients$psi,
+                               kappa = ret$coefficients$kappa, family = "Hermite"),
+      return_distr = TRUE
     )
   }
     if(tau_is_time_varying) ret$coefficients$mean_E1 <- exp(ret$coefficients_raw["log_mean_E1"])
