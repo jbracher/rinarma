@@ -21,7 +21,7 @@
 #' moment-based estimation using `fit_inarma_moments` may be more practical.
 #'
 #' Note that to improve convergence behaviour the function uses some slight regularization
-#' which prevents \eqn{beta > 0.97} and \eqn{psi < 0.03}. If \eqn{psi} is nonetheless
+#' which prevents \eqn{\beta > 0.97} and \eqn{\psi < 0.03}. If \eqn{\psi} is nonetheless
 #' small, it may be more suitable to fit a Poisson model rather than a negative
 #' binomial or Hermite.
 #'
@@ -52,6 +52,7 @@
 #' @return an object of class `inarma`. This is a list with the following elements:
 #' \describe{
 #' \item{family}{the distribution family used.}
+#' \item{offspring}{the offspring disribution used.}
 #' \item{coefficients_raw}{the estimated model coefficients on the internal scale.}
 #' \item{se_raw}{if `return_se == TRUE`: the estimated standard errors on the internal scale.}
 #' \item{cov_raw}{covariance matrix of the estimates on the internal scale.}
@@ -72,13 +73,21 @@
 #' \item{optim}{return object of the call to `optim`}
 #' \item{fitting_method}{the method used to fit the model, here `"maximum_likelihood"`.}
 #' }
-fit_inarma <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
-                       offspring = c("binomial", "binomial-Poisson"),
+fit_inarma <- function(observed, family = "Poisson",
+                       offspring = "binomial",
                        parameterization = "beta",
                        # data_tau = matrix(1, nrow = length(observed), # currently deprecated
                        #                 dimnames = list(NULL, "Intercept")),
                        start = NULL,
                        return_se = TRUE, control_optim = NULL){
+
+  if (!(family %in% c("Poisson", "Hermite", "NegBin"))) {
+    stop("Invalid family name. Must be one of 'Poisson', 'Hermite', or 'NegBin'.")
+  }
+
+  if (!(offspring %in% c("binomial", "binomial-Poisson"))) {
+    stop("Invalid offspring name. Must be one of 'binomial' and 'binomial-Poisson'.")
+  }
 
   data_tau = matrix(1, nrow = length(observed), # currently deprecated
                     dimnames = list(NULL, "Intercept")) # to be removed when data is allowed again.
@@ -435,6 +444,7 @@ choose_support <- function(observed, tau, phi, kappa, psi = NULL, family){
 #' values in the support (given the past). This contains notably all likelihood contributions and
 #' can serve to compute fitted values.}
 #' \item{family}{the distribution family used.}
+#' \item{offspring}{the offspring disribution used.}
 #' \item{fitted_values}{the fitted values as obtained from `lik_distr`.}
 #' \item{fitted_variance}{the fitted conditional variances as obtained from `lik_distr`.}
 #' \item{pearson_residuals}{the Pearson residuals.}
@@ -447,10 +457,18 @@ choose_support <- function(observed, tau, phi, kappa, psi = NULL, family){
 #' \item{fitting_method}{the method used to fit the model, here `"maximum_likelihood"`.}
 #' }
 #' @export
-fit_inar <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
-                     offspring = c("binomial", "binomial-Poisson"),
+fit_inar <- function(observed, family = "Poisson",
+                     offspring = "binomial",
                      start = NULL,
                      return_se = TRUE, control_optim = NULL){
+
+  if (!(family %in% c("Poisson", "Hermite", "NegBin"))) {
+    stop("Invalid family name. Must be one of 'Poisson', 'Hermite', or 'NegBin'.")
+  }
+
+  if (!(offspring %in% c("binomial", "binomial-Poisson"))) {
+    stop("Invalid offspring name. Must be one of 'binomial' and 'binomial-Poisson'.")
+  }
 
   data_tau = matrix(1, nrow = length(observed), # currently deprecated
                     dimnames = list(NULL, "Intercept")) # to be removed when data is allowed again.
