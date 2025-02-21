@@ -68,7 +68,6 @@ for(s in 1:3){ # loop over scenarios
 
     # how many times was se estimation not possible or obviously instable?
     removed_est_se_temp[as.character(lgt), ] <- colSums(is.na(ses))
-    paste0("inst/Estimation/Results/Estim_moments_s", s, "_", lgt, "_", vals_family_abbrev[family], ".csv")
     # get moment estimates:
     pars_moment <- read.csv(file = paste0("inst/Estimation/Results/Estim_moments_s", s, "_", lgt, "_pois.csv"))[, c("tau", "beta", "kappa")]
 
