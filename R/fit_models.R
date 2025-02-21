@@ -590,13 +590,7 @@ fit_inar <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
   }
 
   if (family == "Poisson") {
-    # ret$fitted_values <- c(
-    #   observed[1],
-    #   ret$coefficients$tau + ret$coefficients$kappa * observed[-length(observed)]
-    #   )
-    # ret$fitted_variance <- ret$fitted_values
-    # ret$lik_distr <- t(sapply(ret$fitted_values, FUN = dpois, x = 0:round(1.2 * max(observed))))
-    lik_distr <- llik_inarma_pois(
+      lik_distr <- llik_inarma_pois(
       observed,
       tau = ret$coefficients$tau,
       kappa = ret$coefficients$kappa,
@@ -611,17 +605,6 @@ fit_inar <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
   if(family == "NegBin") {
     ret$coefficients$psi <- exp(ret$coefficients_raw["log_psi"])
     ret$se$psi <- as.numeric(ret$se_raw["log_psi"] * exp(ret$coefficients_raw["log_psi"])^2)
-    # ret$fitted_values <- c(
-    #   observed[1],
-    #   ret$coefficients$tau + ret$coefficients$kappa * observed[-length(observed)]
-    # )
-    # ret$fitted_variance <- ret$fitted_values * (1 + ret$coefficients$psi)
-    # ret$lik_distr <- t(
-    #   sapply(
-    #     ret$fitted_values,
-    #     FUN = function (x) {dnbinom(0:round(1.2 * max(observed)), mu = x, size = 1 / ret$coefficients$psi)}
-    #   )
-    # )
     lik_distr <- llik_inarma_negbin(
       observed,
       tau = ret$coefficients$tau,
@@ -639,17 +622,6 @@ fit_inar <- function(observed, family = c("Poisson", "Hermite", "NegBin"),
   if(family == "Hermite") {
     ret$coefficients$psi <- exp(ret$coefficients_raw["logit_psi"])/(1 + exp(ret$coefficients_raw["logit_psi"]))
     ret$se$psi <- as.numeric(ret$se_raw["logit_psi"] * exp(ret$coefficients_raw["logit_psi"]) / (1 + exp(ret$coefficients_raw["logit_psi"]))^2)
-    # ret$fitted_values <- c(
-    #   observed[1],
-    #   ret$coefficients$tau + ret$coefficients$kappa * observed[-length(observed)]
-    # )
-    # ret$fitted_variance <- ret$fitted_values * (1 + ret$coefficients$psi)
-    # ret$lik_distr <- t(
-    #   sapply(
-    #     ret$fitted_values,
-    #     FUN = function (x) {dherm(0:round(1.2 * max(observed)), mu = x, psi = ret$coefficients$psi)}
-    #   )
-    # )
     lik_distr <- llik_inarma_herm(
       observed,
       tau = ret$coefficients$tau,
