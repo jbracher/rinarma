@@ -7,7 +7,7 @@ Author: Johannes Bracher
 Maintainer: Johannes Bracher <johannes.bracher@kit.edu>
 Description: This package implements maximum likelihood estimation, simulation and some convenience functions for INARMA(1, 1) count time series models as described in Bracher and Soblova (2024).
 License: GPL (>= 2)
-RoxygenNote: 7.3.1
+RoxygenNote: 7.3.2
 Imports:
     tscount,
     pracma

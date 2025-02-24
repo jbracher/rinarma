@@ -4,12 +4,12 @@
 \alias{llik_inar_negbin}
 \title{Evaluate log-likelihood for a negative binomial INAR(1) model}
 \usage{
-llik_inar_negbin(vect, tau, kappa, psi)
+llik_inar_negbin(vect, tau, kappa, psi, mean_E1)
 }
 \arguments{
 \item{vect}{the vector of observed values}
 
-\item{tau, kappa, beta, psi}{parameters of the Negative binomial
+\item{tau, kappa, beta, psi, mean_E1}{parameters of the Negative binomial
 INAR(1) model in the thinning-based formulation}
 }
 \value{

@@ -2,7 +2,7 @@
 % Please edit documentation in R/generics.R
 \name{print.inarma}
 \alias{print.inarma}
-\title{Print an INARMA(1, 1) model fit}
+\title{Print an INARMA(p, q) model fit}
 \usage{
 \method{print}{inarma}(model)
 }
@@ -10,5 +10,5 @@
 \item{model}{the model fit (an object of class `"inarma"`).}
 }
 \description{
-Print an INARMA(1, 1) model fit
+Print an INARMA(p, q) model fit
 }

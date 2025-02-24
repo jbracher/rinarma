@@ -13,7 +13,8 @@ sim_inarma(
   zeta = NULL,
   lgt,
   offspring = c("binomial", "binomial-Poisson"),
-  family = c("Poisson", "Hermite", "NegBin")
+  family = c("Poisson", "Hermite", "NegBin"),
+  E1 = NULL
 )
 }
 \arguments{

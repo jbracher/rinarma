@@ -30,8 +30,8 @@
 #'
 #' For the Hermite INGARCH(1, 1) model we have
 #' \deqn{\theta * 1 = \begin{cases}
-#'                    1 \quad with probability 2 - \theta,\\
-#'                    2 \quad with probability \theta - 1.
+#'                    1 \quad \text{with probability } 2 - \theta,\\
+#'                    2 \quad \text{with probability } \theta - 1.
 #'                    \end{cases}}
 #' When fitting the Hermite INGARCH(1, 1) model, `fit_ingarch` function operates
 #' internally with the overdispersion parameter \eqn{\psi}, from which
@@ -41,7 +41,7 @@
 #' Finally for the Negative binomial INGARCH(1, 1) model, the thinning \eqn{ * }
 #' is defined as
 #' \deqn{\theta * 1 \sim \text{Log}\left(\frac{1}{1 + \psi}\right),}
-#' where \eqn{\text{Log}(\pis)} denotes the logarithmic distribution with the
+#' where \eqn{\text{Log}(\pi)} denotes the logarithmic distribution with the
 #' probability mass function.
 #' \deqn{p(z) =  \frac{(1 - \pi)^z}{-z\log(\pi)}}
 #' When fitting the Hermite INGARCH(1, 1) model, `fit_ingarch` function operates
@@ -296,7 +296,7 @@ fit_ingarch <- function(observed, family = "Poisson",
 #' @return a list with the following elements:
 #' \describe{
 #' \item{family}{the distribution family used.}
-#' #' \item{offspring}{the offspring disribution used (always "Poisson" for INARCH models).}
+#' \item{offspring}{the offspring disribution used (always "Poisson" for INARCH models).}
 #' \item{coefficients_raw}{the estimated model coefficients on the internal scale.}
 #' \item{se_raw}{if `return_se == TRUE`: the estimated standard errors on the internal scale.}
 #' \item{cov_raw}{covariance matrix of the estimates on the internal scale.}

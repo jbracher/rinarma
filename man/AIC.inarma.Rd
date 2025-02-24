@@ -2,7 +2,7 @@
 % Please edit documentation in R/generics.R
 \name{AIC.inarma}
 \alias{AIC.inarma}
-\title{Get AIC of an INARMA(1, 1) model}
+\title{Get AIC of an INARMA(p, q) model}
 \usage{
 \method{AIC}{inarma}(model)
 }
@@ -10,5 +10,5 @@
 \item{model}{the model (an object of class `"inarma"`)}
 }
 \description{
-Get AIC of an INARMA(1, 1) model
+Get AIC of an INARMA(p, q) model
 }

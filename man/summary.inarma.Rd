@@ -2,7 +2,7 @@
 % Please edit documentation in R/generics.R
 \name{summary.inarma}
 \alias{summary.inarma}
-\title{Summarize an INARMA(1, 1) model fit}
+\title{Summarize an INARMA(p, q) model fit}
 \usage{
 \method{summary}{inarma}(model)
 }
@@ -10,5 +10,5 @@
 \item{model}{the model fit (an object of class `"inarma"`).}
 }
 \description{
-Summarize an INARMA(1, 1) model fit
+Summarize an INARMA(p, q) model fit
 }

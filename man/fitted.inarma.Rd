@@ -2,7 +2,7 @@
 % Please edit documentation in R/generics.R
 \name{fitted.inarma}
 \alias{fitted.inarma}
-\title{Get fitted values of an INARMA(1, 1) model}
+\title{Get fitted values of an INARMA(p, q) model}
 \usage{
 \method{fitted}{inarma}(model)
 }
@@ -10,5 +10,5 @@
 \item{model}{the model (an object of class `"inarma"`)}
 }
 \description{
-Get fitted values of an INARMA(1, 1) model
+Get fitted values of an INARMA(p, q) model
 }

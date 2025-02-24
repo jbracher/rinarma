@@ -34,10 +34,12 @@ acf_exact_pois <- function(max_d, beta, kappa) {
 }
 
 #' Function calculating the exact (analytical) autocovariance function of the
-#' INARMA(p, q) model with parameters \eqn{\kappa}, \eqn{\beta}, \eqn{tau} and
-#' \eqn{sigma^2_\tau}. For the non-Poisson case (\eqn{tau} != \eqn{sigma^2_\tau}),
+#' INARMA(p, q) model.
+#'
+#' The model parameters are \eqn{\kappa}, \eqn{\beta}, \eqn{\tau} and
+#' \eqn{\sigma^2_\tau}. For the non-Poisson case (\eqn{\tau} != \eqn{\sigma^2_\tau}),
 #' an infinite sum must be evaluated. The precision of this evaluation is typically
-#' below 1e-8.
+#' below `1e-8`.
 #'
 #' @param max_d maximum lag
 #' @param beta,kappa,tau,sigma2_tau parameters of the model, both `beta` and `kappa` can be
@@ -45,7 +47,7 @@ acf_exact_pois <- function(max_d, beta, kappa) {
 #' @return list with 2 elements
 #' \describe{
 #' \item{acov}{vector of the autocovariance values from lag 0 to `max_d`.}
-#' \item{approx_OK}{indicator, whether the error of the infinite sum evaluation falls below 1e-8.
+#' \item{approx_OK}{indicator, whether the error of the infinite sum evaluation falls below `1e-8`.
 #' For the Poisson case it is always `TRUE`.}
 #' }
 acov_exact <- function(max_d, beta, kappa, tau = NULL, sigma2_tau = NULL) {
@@ -132,7 +134,10 @@ acf_exact_11 <- function (max_d, beta, kappa, tau, sigma2_tau) {
 }
 
 #' Function calculating the exact autocorrelation fun of the Poisson
-#' INGARCH(p, q) model using the functionality from the tscount package
+#' INGARCH(p, q) model.
+#'
+#' The function uses the functionality from the `tscount` package.
+#'
 #' function arguments:
 #' @param max_d maximum lag
 #' @param beta,kappa,tau model parameters in the thinning formulation
@@ -145,8 +150,10 @@ acf_exact_ingarch <- function(max_d, beta, kappa, tau) {
   return(true_cor)
 }
 
-#' Function calculating the exact mean of the Poisson INGARCH(p, q) model
-#' using the functionality from the tscount package
+#' Function calculating the exact mean of the Poisson INGARCH(p, q) model.
+#'
+#' The function uses the functionality from the `tscount` package.
+#'
 #' function arguments:
 #' @param beta,kappa,tau model parameters in the thinning formulation. Both
 #' `beta` and `kappa` can be vectors. Each of them must sum up to less than 1.
@@ -159,8 +166,10 @@ mean_exact_ingarch <- function(beta, kappa, tau) {
   return(true_mean)
 }
 
-#' Function calculating the exact variance of the Poisson INGARCH(p, q) model
-#' using the functionality from the tscount package
+#' Function calculating the exact variance of the Poisson INGARCH(p, q) model.
+#'
+#' The function uses the functionality from the `tscount` package.
+#'
 #' function arguments:
 #' @param beta,kappa,tau model parameters in the thinning formulation. Both
 #' `beta` and `kappa` can be vectors. Each of them must sum up to less than 1.

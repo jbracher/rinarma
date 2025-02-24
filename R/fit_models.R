@@ -32,7 +32,7 @@
 #' X <- measles$value
 #' # Note: running the fit takes a little while.
 #' \dontrun{
-#' fit <- fit_inarma(X, family = "Poisson", offspring = "binomial)
+#' fit <- fit_inarma(X, family = "Poisson", offspring = "binomial")
 #' summary(fit)
 #' plot(fit, type = "fit")
 #' }
@@ -414,7 +414,7 @@ choose_support <- function(observed, tau, phi, kappa, psi = NULL, family){
 #' This distribution is charaterized by its mean, denoted by \eqn{\tau}, and potentially a dispersion parameter \eqn{\psi}.
 #'
 #' The function uses a variation of the forward algorithm to fit the models. It is a simplified version of
-#' `fit_inarma` with the additional parameter \eqn{phi} set to 1.
+#' `fit_inarma` with the additional parameter \eqn{\phi} set to 1.
 #'
 #'
 #' @export
@@ -424,7 +424,7 @@ choose_support <- function(observed, tau, phi, kappa, psi = NULL, family){
 #' X <- measles$value
 #' # Note: running the fit takes a little while.
 #' \dontrun{
-#' fit <- fit_inar(X, family = "Poisson")
+#' fit <- fit_inar(X, family = "Poisson", offspring = "binomial")
 #' }
 #'
 #' @param observed a vector of observed count values.

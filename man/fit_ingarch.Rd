@@ -6,7 +6,7 @@
 \usage{
 fit_ingarch(
   observed,
-  family = c("Poisson", "Hermite", "NegBin"),
+  family = "Poisson",
   start = NULL,
   return_se = TRUE,
   control_optim = NULL
@@ -28,14 +28,20 @@ scale; check the element `"optim"` of the return list).}
 a list with the following elements:
 \describe{
 \item{family}{the distribution family used.}
+\item{offspring}{the offspring disribution used (always "Poisson" for INGARCH models).}
 \item{coefficients_raw}{the estimated model coefficients on the internal scale.}
 \item{se_raw}{if `return_se == TRUE`: the estimated standard errors on the internal scale.}
 \item{cov_raw}{covariance matrix of the estimates on the internal scale.}
 \item{coefficients}{the estimated model parameters transformed back to the natural scale.}
 \item{se}{the estimated standard errors transformed back to the natural scale.}
 \item{observed}{the vector of observed values provided by the user.}
+\item{lik_distr}{matrix containing for each time point the conditional probabilities for all
+values in the support (given the past). This contains notably all likelihood contributions and
+can serve to compute fitted values.}
 \item{fitted_values}{the fitted values as obtained from `lik_distr`}
 \item{pearson_residuals}{the Pearson residuals}
+\item{psi}{estimate and standard error of the parameter \eqn{\psi} from the
+ GLM-formulation of the INARCH model. Included for making the transitions between the two formulations easier.}
 \item{dim}{the number of fitted parameters}
 \item{loglikelihood}{the log-likelihood of the fitted model}
 \item{AIC}{the resulting AIC}
@@ -77,8 +83,8 @@ For the Poisson INGARCH(1, 1) model, we have \eqn{\theta * 1 = 1}.
 
 For the Hermite INGARCH(1, 1) model we have
 \deqn{\theta * 1 = \begin{cases}
-                   1 \quad with probability 2 - \theta,\\
-                   2 \quad with probability \theta - 1.
+                   1 \quad \text{with probability } 2 - \theta,\\
+                   2 \quad \text{with probability } \theta - 1.
                    \end{cases}}
 When fitting the Hermite INGARCH(1, 1) model, `fit_ingarch` function operates
 internally with the overdispersion parameter \eqn{\psi}, from which
@@ -88,7 +94,7 @@ internally with the overdispersion parameter \eqn{\psi}, from which
 Finally for the Negative binomial INGARCH(1, 1) model, the thinning \eqn{ * }
 is defined as
 \deqn{\theta * 1 \sim \text{Log}\left(\frac{1}{1 + \psi}\right),}
-where \eqn{\text{Log}(\pis)} denotes the logarithmic distribution with the
+where \eqn{\text{Log}(\pi)} denotes the logarithmic distribution with the
 probability mass function.
 \deqn{p(z) =  \frac{(1 - \pi)^z}{-z\log(\pi)}}
 When fitting the Hermite INGARCH(1, 1) model, `fit_ingarch` function operates

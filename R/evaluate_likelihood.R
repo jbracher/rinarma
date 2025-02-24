@@ -395,7 +395,7 @@ llik_inarma_negbin <- function(vect, distr_E1 = NULL, tau, phi, psi, kappa,
 
 #' Evaluate log-likelihood of a Poisson INAR(1) model
 #' @param vect the vector of observed values
-#' @param tau,kappa,zeta parameters of the Poisson INAR(1) model
+#' @param tau,kappa,zeta,mean_E1 parameters of the Poisson INAR(1) model
 #' @return log-likelihood
 llik_inar_pois <- function(vect, tau, kappa, zeta, mean_E1){
 
@@ -427,7 +427,7 @@ llik_inar_pois <- function(vect, tau, kappa, zeta, mean_E1){
 
 #' Evaluate log-likelihood for a negative binomial INAR(1) model
 #' @param vect the vector of observed values
-#' @param tau,kappa,beta,psi parameters of the Negative binomial
+#' @param tau,kappa,beta,psi,mean_E1 parameters of the Negative binomial
 #' INAR(1) model in the thinning-based formulation
 #' @return log-likelihood
 llik_inar_negbin <- function(vect, tau, kappa, psi, mean_E1){
@@ -458,7 +458,7 @@ llik_inar_negbin <- function(vect, tau, kappa, psi, mean_E1){
 
 #' Evaluate log-likelihood for a Hermite INAR(1) model
 #' @param vect the vector of observed values
-#' @param tau,kappa,beta,psi parameters of the Hermite INAR(1) model in the
+#' @param tau,kappa,beta,psi,mean_E1 parameters of the Hermite INAR(1) model in the
 #' thinning-based formulation
 #' @return log-likelihood
 llik_inar_herm <- function(vect, tau, kappa, psi, mean_E1){

@@ -1,6 +1,6 @@
 #' Function for evaluating the likelihood of an AR model approximating the
 #' INARMA(1, 1) model
-#' @param pars transformed model parameters, \eqn{\kappa} and \eqn{beta} on the
+#' @param pars transformed model parameters, \eqn{\kappa} and \eqn{\beta} on the
 #'  logit-scale, tau on the log-scale
 #' @param X the observed count series
 #' @param lag_max order of the AR model to be used for the approximation

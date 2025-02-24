@@ -6,8 +6,8 @@
 \usage{
 fit_inar(
   observed,
-  family = c("Poisson", "Hermite", "NegBin"),
-  offspring = c("binomial", "binomial-Poisson"),
+  family = "Poisson",
+  offspring = "binomial",
   start = NULL,
   return_se = TRUE,
   control_optim = NULL
@@ -37,6 +37,7 @@ an object of class `inarma`. This is a list with the following elements:
 values in the support (given the past). This contains notably all likelihood contributions and
 can serve to compute fitted values.}
 \item{family}{the distribution family used.}
+\item{offspring}{the offspring disribution used.}
 \item{fitted_values}{the fitted values as obtained from `lik_distr`.}
 \item{fitted_variance}{the fitted conditional variances as obtained from `lik_distr`.}
 \item{pearson_residuals}{the Pearson residuals.}
@@ -58,14 +59,14 @@ This distribution is charaterized by its mean, denoted by \eqn{\tau}, and potent
 }
 \details{
 The function uses a variation of the forward algorithm to fit the models. It is a simplified version of
-`fit_inarma` with the additional parameter \eqn{phi} set to 1.
+`fit_inarma` with the additional parameter \eqn{\phi} set to 1.
 }
 \examples{
 data("measles")
 X <- measles$value
 # Note: running the fit takes a little while.
 \dontrun{
-fit <- fit_inar(X, family = "Poisson")
+fit <- fit_inar(X, family = "Poisson", offspring = "binomial")
 }
 
 }

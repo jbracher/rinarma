@@ -4,12 +4,12 @@
 \alias{llik_inar_pois}
 \title{Evaluate log-likelihood of a Poisson INAR(1) model}
 \usage{
-llik_inar_pois(vect, tau, kappa, zeta)
+llik_inar_pois(vect, tau, kappa, zeta, mean_E1)
 }
 \arguments{
 \item{vect}{the vector of observed values}
 
-\item{tau, kappa, zeta}{parameters of the Poisson INAR(1) model}
+\item{tau, kappa, zeta, mean_E1}{parameters of the Poisson INAR(1) model}
 }
 \value{
 log-likelihood

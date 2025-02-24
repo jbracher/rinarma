@@ -6,8 +6,8 @@
 \usage{
 fit_inarma(
   observed,
-  family = c("Poisson", "Hermite", "NegBin"),
-  offspring = c("binomial", "binomial-Poisson"),
+  family = "Poisson",
+  offspring = "binomial",
   parameterization = "beta",
   start = NULL,
   return_se = TRUE,
@@ -37,6 +37,7 @@ with `phi = 1 - beta`.}
 an object of class `inarma`. This is a list with the following elements:
 \describe{
 \item{family}{the distribution family used.}
+\item{offspring}{the offspring disribution used.}
 \item{coefficients_raw}{the estimated model coefficients on the internal scale.}
 \item{se_raw}{if `return_se == TRUE`: the estimated standard errors on the internal scale.}
 \item{cov_raw}{covariance matrix of the estimates on the internal scale.}
@@ -59,7 +60,7 @@ can serve to compute fitted values.}
 }
 }
 \description{
-Maximum likelihood inference for INARMA(1,1) model as described in Bracher and Sobolova (2024).
+Maximum likelihood inference for INARMA(1,1) model as described in Bracher and Sobolova (2025).
 The model is defined as
 \deqn{X_t = (1 - \beta) \circ E_t + I_t}
 \deqn{E_t = \beta \circ E_{t - 1} + \kappa \bullet X_{t - 1}}
@@ -81,7 +82,7 @@ already for medium-level counts. If the time series contains values above ~15
 moment-based estimation using `fit_inarma_moments` may be more practical.
 
 Note that to improve convergence behaviour the function uses some slight regularization
-which prevents \eqn{beta > 0.97} and \eqn{psi < 0.03}. If \eqn{psi} is nonetheless
+which prevents \eqn{\beta > 0.97} and \eqn{\psi < 0.03}. If \eqn{\psi} is nonetheless
 small, it may be more suitable to fit a Poisson model rather than a negative
 binomial or Hermite.
 }
@@ -90,7 +91,7 @@ data("measles")
 X <- measles$value
 # Note: running the fit takes a little while.
 \dontrun{
-fit <- fit_inarma(X, family = "Poisson")
+fit <- fit_inarma(X, family = "Poisson", offspring = "binomial")
 summary(fit)
 plot(fit, type = "fit")
 }

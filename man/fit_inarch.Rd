@@ -6,7 +6,7 @@
 \usage{
 fit_inarch(
   observed,
-  family = c("Poisson", "Hermite", "NegBin"),
+  family = "Poisson",
   start = NULL,
   return_se = TRUE,
   control_optim = NULL
@@ -28,14 +28,20 @@ scale; check the element `"optim"` of the return list).}
 a list with the following elements:
 \describe{
 \item{family}{the distribution family used.}
+\item{offspring}{the offspring disribution used (always "Poisson" for INARCH models).}
 \item{coefficients_raw}{the estimated model coefficients on the internal scale.}
 \item{se_raw}{if `return_se == TRUE`: the estimated standard errors on the internal scale.}
 \item{cov_raw}{covariance matrix of the estimates on the internal scale.}
 \item{coefficients}{the estimated model parameters transformed back to the natural scale.}
 \item{se}{the estimated standard errors transformed back to the natural scale.}
 \item{observed}{the vector of observed values provided by the user.}
+\item{lik_distr}{matrix containing for each time point the conditional probabilities for all
+values in the support (given the past). This contains notably all likelihood contributions and
+can serve to compute fitted values.}
 \item{fitted_values}{the fitted values as obtained from `lik_distr`}
 \item{pearson_residuals}{the Pearson residuals}
+\item{psi}{estimate and standard error of the parameter \eqn{\psi} from the
+ GLM-formulation of the INARCH model. Included for making the transitions between the two formulations easier.}
 \item{dim}{the number of fitted parameters}
 \item{loglikelihood}{the log-likelihood of the fitted model}
 \item{AIC}{the resulting AIC}

@@ -4,12 +4,12 @@
 \alias{llik_inar_herm}
 \title{Evaluate log-likelihood for a Hermite INAR(1) model}
 \usage{
-llik_inar_herm(vect, tau, kappa, psi)
+llik_inar_herm(vect, tau, kappa, psi, mean_E1)
 }
 \arguments{
 \item{vect}{the vector of observed values}
 
-\item{tau, kappa, beta, psi}{parameters of the Hermite INAR(1) model in the
+\item{tau, kappa, beta, psi, mean_E1}{parameters of the Hermite INAR(1) model in the
 thinning-based formulation}
 }
 \value{

@@ -1,5 +1,9 @@
-#' Transform a 2D parameter pair, for which par[1] + par[2] < 1 and
-#' 0 < par[1], par[2] < 1, onto the unconstrained parametric space R^2
+#' Transform a 2D parameter pair onto the unconstrained parametric space.
+#'
+#' For the 2D parameter must hold which `par[1] + par[2] < 1` and
+#' `0 < par[1], par[2] < 1`. The unconstrained parameter space is the whole
+#' real plane.
+#'
 #' @param par 2D parameter of an INARMA model, either \eqn{(\kappa_1, \kappa_2)},
 #'  or  \eqn{(\beta_1, \beta_2)}
 #' @return transformed parameter (vector with two elements)
@@ -15,8 +19,13 @@ orig_par_to_unconstrained <- function (par) {
   return(c(a, b))
 }
 
-#' Back-transform a 2D parameter pairon the unconstrained space R^2 back to the
-#' original space, where par[1] + par[2] < 1 and 0 < par[1], par[2] < 1
+#' Back-transform a 2D parameter pair on the unconstrained space back to the
+#' original space.
+#'
+#' For the 2D parameter must hold which `par[1] + par[2] < 1` and
+#' `0 < par[1], par[2] < 1`. The unconstrained parameter space is the whole
+#' real plane.
+#'
 #' @param par transformed 2D parameter of an INARMA model, either \eqn{g(\kappa_1, \kappa_2)},
 #'  or  \eqn{g(\beta_1, \beta_2)}
 #' @return back-transformed parameter (vector with two elements)
